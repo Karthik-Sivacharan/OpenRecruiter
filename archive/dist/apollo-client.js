@@ -12,7 +12,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 async function searchCandidates(jobTitle, location = "San Francisco, CA", limit = 30) {
     try {
-        const response = await axios_1.default.post("https://api.apollo.io/v1/mixed_people/search", {
+        const response = await axios_1.default.post("https://api.apollo.io/v1/mixed_people/api_search", {
             api_key: process.env.APOLLO_API_KEY,
             q_person_title: jobTitle,
             person_locations: [location],

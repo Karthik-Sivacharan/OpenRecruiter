@@ -5,7 +5,7 @@ dotenv.config();
 
 export async function searchCandidates(jobTitle: string, location = "San Francisco, CA", limit = 30): Promise<any[]> {
   try {
-    const response = await axios.post("https://api.apollo.io/v1/mixed_people/search", {
+    const response = await axios.post("https://api.apollo.io/v1/mixed_people/api_search", {
       api_key: process.env.APOLLO_API_KEY,
       q_person_title: jobTitle,
       person_locations: [location],
