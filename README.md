@@ -1,4 +1,4 @@
-# OpenRecruiter 🤖
+# OpenRecruiter 
 
 An autonomous AI recruiting agent that sources, scores, and outreaches to candidates — built at the OpenClaw Hackathon.
 
