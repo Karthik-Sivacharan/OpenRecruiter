@@ -48,6 +48,49 @@ Log to Graphiti at EVERY step:
 
 Sourced -> Enriched -> Analyzed -> Scored -> Draft Ready -> Contacted -> Replied -> Screened -> Intro'd
 
+## Model Routing Strategy
+
+The chat agent (orchestrator) always runs on **Sonnet 4.6**. Individual tool implementations use different models internally for cost optimization.
+
+| Pipeline Step | Orchestrator | Internal Model | Why |
+|---|---|---|---|
+| Sourcing (Apollo search, enrich) | Sonnet 4.6 | None (pure API calls) | No LLM needed, just REST calls |
+| Enrichment (EnrichLayer, PDL) | Sonnet 4.6 | None (pure API calls) | No LLM needed |
+| GitHub/Portfolio Discovery | Sonnet 4.6 | None (pure API calls) | No LLM needed |
+| Nia Tracer Analysis | Sonnet 4.6 | None (Nia does the analysis) | Nia's own AI handles it |
+| **Candidate Scoring** | Sonnet 4.6 | **Opus 4.6** | Best reasoning for nuanced fit assessment |
+| Email Drafting | Sonnet 4.6 | Sonnet 4.6 | Needs good writing quality |
+| CRM Updates (Attio) | Sonnet 4.6 | None (pure API calls) | No LLM needed |
+| Auto-Reply Generation | Sonnet 4.6 | Sonnet 4.6 | Needs context + good writing |
+| Drip Follow-ups | Sonnet 4.6 | Sonnet 4.6 | Needs personalization quality |
+
+### How Model Routing Works in Code
+
+```typescript
+// The main /api/chat/route.ts always uses Sonnet 4.6
+const result = streamText({
+  model: anthropic('claude-sonnet-4-6-20250514'),
+  messages,
+  tools: { ... }
+})
+
+// Inside the scoreCandidate tool implementation, call Opus separately
+const scoringResult = await generateText({
+  model: anthropic('claude-opus-4-6-20250626'),
+  prompt: `Score this candidate against the role...`,
+})
+```
+
+### Model IDs
+- **Sonnet 4.6**: `claude-sonnet-4-6-20250514` (orchestrator + writing)
+- **Opus 4.6**: `claude-opus-4-6-20250626` (scoring only)
+- **Haiku 4.5**: `claude-haiku-4-5-20251001` (reserved for future batch operations)
+
+### Cost Estimate Per Session (~$0.25)
+- Sonnet 4.6 orchestration: ~$0.20 (50k input, 8k output)
+- Opus 4.6 scoring call: ~$0.05 (5k input, 2k output)
+- Most tools are pure API calls with zero LLM cost
+
 ## Credit Awareness
 
 Always tell the recruiter the credit cost before spending:

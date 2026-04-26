@@ -5,7 +5,10 @@ An autonomous AI recruiting agency. Give it a job description URL + preferences,
 ## Stack
 
 - **Framework:** Next.js 15 (App Router, TypeScript strict)
-- **AI:** Vercel AI SDK v6 (`ai`, `@ai-sdk/anthropic`), Claude Sonnet for most tasks, Opus for scoring
+- **AI:** Vercel AI SDK v6 (`ai`, `@ai-sdk/anthropic`)
+  - Orchestrator: Sonnet 4.6 (`MODEL_ORCHESTRATOR` env var) — all chat + tool calling + writing
+  - Scoring: Opus 4.6 (`MODEL_SCORING` env var) — called internally by scoreCandidate tool only
+  - Batch: Haiku 4.5 (`MODEL_BATCH` env var) — reserved for future high-volume operations
 - **UI:** shadcn/ui + Vercel ai-elements (chat components), Tailwind CSS
 - **CRM:** Attio (MCP)
 - **Sourcing:** Apollo.io (MCP)
