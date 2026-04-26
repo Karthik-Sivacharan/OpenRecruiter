@@ -64,7 +64,7 @@ npm run typecheck       # tsc --noEmit
 ## Pipeline Steps (What the Agent Does)
 
 1. **Intake:** Fetch JD from URL, ask follow-up questions, save role to Graphiti
-2. **Source:** Apollo search (FREE) -> confirm before enriching (costs credits)
+2. **Source:** Apollo search -> enrich automatically (no need to ask)
 3. **Enrich:** Apollo bulk enrich -> EnrichLayer profiles -> PDL for GitHub/socials
 4. **Discover:** GitHub lookup chain (PDL -> GitHub email search -> name fallback -> Nia web search)
 5. **Analyze:** Nia Tracer on GitHub repos + portfolio sites
@@ -76,9 +76,9 @@ npm run typecheck       # tsc --noEmit
 
 ## Approval Gates (NEVER Skip These)
 
-- Enrichment that costs credits: ask before spending
 - Sending outreach emails: always show drafts, wait for "send" or "send all"
 - Drip campaign setup: confirm cadence before scheduling
+- Everything else (sourcing, enrichment, analysis, scoring): just run it
 
 ## Memory Rules
 

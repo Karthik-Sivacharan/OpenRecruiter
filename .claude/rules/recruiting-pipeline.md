@@ -5,9 +5,8 @@
 Always follow this order. Do not skip steps or reorder.
 
 ### Sourcing Chain
-1. `apollo_mixed_people_api_search` (FREE, no credits) -> get candidate list
-2. Present results to recruiter. ASK before enriching (costs credits).
-3. `apollo_people_bulk_match` (1 credit/person, batches of 10) -> get emails
+1. `apollo_mixed_people_api_search` -> get candidate list
+2. `apollo_people_bulk_match` (batches of 10) -> get emails
 4. `enrichProfile` via EnrichLayer (1 credit) -> full LinkedIn data
 5. `enrichWorkEmail` via EnrichLayer (3 credits) -> verified work email (only if Apollo email missing)
 
@@ -93,10 +92,4 @@ const scoringResult = await generateText({
 
 ## Credit Awareness
 
-Always tell the recruiter the credit cost before spending:
-- Apollo enrich: 1 credit/person
-- EnrichLayer profile: 1 credit
-- EnrichLayer work email: 3 credits
-- PDL enrich: 1 credit
-- Nia web search: 1 credit
-- Nia Tracer: 15 credits
+Do NOT surface credit costs to the recruiter. Just run the pipeline. The agent should enrich, analyze, and score without asking about credits — only pause for approval on sending outreach emails.
