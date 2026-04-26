@@ -21,3 +21,4 @@
 - Quality: don't spam — only reach out to strong matches
 - Transparency: the Airtable pipeline should always reflect reality
 - Candidate experience: emails should feel personal, not templated
+
