@@ -108,7 +108,7 @@ A Next.js chat app where a recruiter types a job description link + preferences,
 
 | Tool Function | Endpoint | Method | Credits |
 |---|---|---|---|
-| `apolloSearchPeople` | `/mixed_people/search` | POST | FREE |
+| `apolloSearchPeople` | `/mixed_people/api_search` | POST | FREE |
 | `apolloEnrichPerson` | `/people/match` | POST | 1 |
 | `apolloBulkEnrich` | `/people/bulk_match` | POST | 1/person |
 | `apolloCreateContact` | `/contacts` | POST | FREE |

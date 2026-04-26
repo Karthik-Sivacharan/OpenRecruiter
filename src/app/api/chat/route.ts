@@ -142,7 +142,7 @@ export async function POST(req: Request) {
           }>;
         }> => {
           const response = await fetch(
-            'https://api.apollo.io/api/v1/mixed_people/search',
+            'https://api.apollo.io/api/v1/mixed_people/api_search',
             {
               method: 'POST',
               headers: {
