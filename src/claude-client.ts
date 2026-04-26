@@ -59,3 +59,25 @@ export async function generateCandidateBrief(context: string, jobTitle: string, 
   const text = response.content[0].type === "text" ? response.content[0].text : "";
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
+
+// Enhanced scoring with GitHub research from Nia Tracer
+export async function extractAndScoreCandidateWithGitHub(
+  apolloRaw: any,
+  jobDescription: string,
+  githubReport: string
+): Promise<any> {
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1000,
+    system: `You are a recruiting analyst. Extract candidate info and score their fit.
+Respond ONLY with valid JSON, no markdown:
+{"name":"","email":"","title":"","company":"","linkedin":"","location":"","key_skills":[],"fit_notes":"","fit_score":0,"github_highlights":""}
+fit_score is 1-10. If GitHub data is provided, factor actual work quality into the score.`,
+    messages: [{
+      role: "user",
+      content: `Job:\n${jobDescription}\n\nCandidate:\n${JSON.stringify(apolloRaw)}\n\n${githubReport ? `GitHub Research:\n${githubReport}` : "No GitHub data available."}`
+    }],
+  });
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  return JSON.parse(text.replace(/```json|```/g, "").trim());
+}
