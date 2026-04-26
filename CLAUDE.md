@@ -61,24 +61,22 @@ npm run typecheck       # tsc --noEmit
 | Context7 | Live docs lookup (AI SDK, Next.js) | Yes |
 | BrowserOS | Browser automation | Yes |
 
-## Pipeline Steps (What the Agent Does)
+## Pipeline Flow (5 Phases)
 
-1. **Intake:** Fetch JD from URL, ask follow-up questions, save role to Graphiti
-2. **Source:** Apollo search -> enrich automatically (no need to ask)
-3. **Enrich:** Apollo bulk enrich -> EnrichLayer profiles -> PDL for GitHub/socials
-4. **Discover:** GitHub lookup chain (PDL -> GitHub email search -> name fallback -> Nia web search)
-5. **Analyze:** Nia Tracer on GitHub repos + portfolio sites
-6. **Score:** Holistic scoring using scoring-rubric skill (Claude Opus)
-7. **CRM:** Save everything to Attio pipeline + Graphiti knowledge graph
-8. **Outreach:** Draft emails using outreach-style skill -> AgentMail drafts -> recruiter approves -> send
-9. **Drip:** Day 3 + Day 7 follow-ups via Vercel Cron
-10. **Reply:** AgentMail webhook -> contextual auto-reply with screening link
+1. **Intake:** Fetch JD, ask follow-up questions (must-haves, location, count, preferences). Wait for answers.
+2. **Autonomous pipeline (no pauses):** Source -> Enrich -> Discover GitHub -> Analyze -> Score -> Draft emails -> Write everything to Airtable
+3. **Recruiter review:** Tell recruiter "Done, go check Airtable." Show summary table in chat. Wait.
+4. **Send + Drip:** Recruiter says "send all" or picks specific candidates. Confirm drip campaign details before scheduling.
+5. **Auto-reply:** AgentMail webhook reads candidate's Airtable row for context, auto-replies, updates Airtable.
+
+See `.claude/rules/recruiting-pipeline.md` for the detailed step-by-step.
 
 ## Approval Gates (NEVER Skip These)
 
-- Sending outreach emails: always show drafts, wait for "send" or "send all"
-- Drip campaign setup: confirm cadence before scheduling
-- Everything else (sourcing, enrichment, analysis, scoring): just run it
+- **Intake questions:** Wait for recruiter to answer before sourcing
+- **Sending outreach:** Recruiter chooses: send all, pick specific, or send manually via AgentMail
+- **Drip campaign:** Propose details, confirm with recruiter before scheduling
+- **Everything else** (sourcing, enrichment, analysis, scoring, drafting): just run it autonomously
 
 ## Memory Rules
 
