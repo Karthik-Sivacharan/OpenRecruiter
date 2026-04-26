@@ -152,9 +152,9 @@ The chat agent (orchestrator) always runs on **Sonnet 4.6**. Individual tool imp
 | Drip Follow-ups | -- | Sonnet 4.6 | Runs via Vercel Cron |
 
 ### Model IDs
-- **Sonnet 4.6**: `claude-sonnet-4-6-20250514` (orchestrator + writing)
-- **Opus 4.6**: `claude-opus-4-6-20250626` (scoring only)
-- **Haiku 4.5**: `claude-haiku-4-5-20251001` (reserved for future batch operations)
+- **Sonnet 4.6**: `claude-sonnet-4-6` (orchestrator + writing)
+- **Opus 4.6**: `claude-opus-4-6` (scoring only)
+- **Haiku 4.5**: `claude-haiku-4-5-20251001` (batch operations — still requires date suffix)
 
 ### Cost Estimate Per Session (~$0.25)
 - Sonnet 4.6 orchestration: ~$0.20 (50k input, 8k output)

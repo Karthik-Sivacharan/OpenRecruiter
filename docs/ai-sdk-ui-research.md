@@ -140,7 +140,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-20250514'),
+    model: anthropic('claude-sonnet-4-6'),
     system: 'You are an expert AI recruiting assistant...',
     messages: await convertToModelMessages(messages),
     tools: { /* tool definitions */ },
@@ -553,7 +553,7 @@ This ensures the agent loop continues after the recruiter approves/denies.
 import { stepCountIs } from 'ai';
 
 streamText({
-  model: anthropic('claude-sonnet-4-20250514'),
+  model: anthropic('claude-sonnet-4-6'),
   tools: { searchCandidates, enrichCandidate, draftEmail, sendEmail },
   stopWhen: stepCountIs(5),  // Max 5 agent iterations
   // Alternative stopping conditions:
@@ -1105,7 +1105,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-20250514'),
+    model: anthropic('claude-sonnet-4-6'),
     system: `You are OpenRecruiter, an expert AI recruiting assistant...`,
     messages: await convertToModelMessages(messages),
     tools,
