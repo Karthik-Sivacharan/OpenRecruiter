@@ -19,12 +19,14 @@ export async function createCandidateRecord(c: any): Promise<string> {
     const existing = await findCandidateByEmail(c.email);
     if (existing?.airtable_id) {
       console.log(`Airtable: ${c.name} already exists — updating score`);
-      await updateCandidateStatus(existing.airtable_id, c.status || "Sourced", {
+      await getBase()(TABLE()).update(existing.airtable_id, {
+        "Pipeline Stage": c.status || "Sourced",
         "Nia Score": c.fit_score || 0,
         "Nia Analysis": c.fit_notes || "",
         "GitHub URL": c.github_url || "",
         "Skills": c.key_skills?.join(", ") || "",
       });
+      console.log(`Airtable: ${c.name} Nia Score updated to ${c.fit_score}/10`);
       return existing.airtable_id;
     }
     const record = await getBase()(TABLE()).create({
