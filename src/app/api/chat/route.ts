@@ -7,6 +7,11 @@ import {
 } from 'ai';
 
 import { apolloSearchPeople, apolloBulkEnrich } from '@/lib/tools/apollo';
+import {
+  airtableCreateCandidates,
+  airtableUpdateCandidate,
+  airtableGetCandidates,
+} from '@/lib/tools/airtable';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -27,12 +32,12 @@ const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent.
 **Phase 3 — Enrich + Analyze (autonomous after approval, no more pauses):**
 Once recruiter approves enrichment, run the full chain without stopping:
 1. apolloBulkEnrich (batches of 10) → get emails, employment history, company details.
-2. Push enriched data to Airtable immediately (stage: "Enriched"). Nothing lost if pipeline crashes.
-3. (Future: EnrichLayer → skills, education → UPDATE Airtable rows)
-4. (Future: PDL → GitHub URLs → UPDATE Airtable rows)
-5. (Future: Nia Tracer → code analysis → UPDATE Airtable rows, stage: "Analyzed")
-6. (Future: Score with Opus → UPDATE Airtable rows with score + rationale + draft email, stage: "Scored")
-7. Tell recruiter: "Done. Go check Airtable. Want to send outreach?"
+2. Immediately push ALL enriched candidates to Airtable using airtableCreateCandidates. Set Pipeline Stage to "Enriched" and include the Role name. This ensures no data is lost if the pipeline crashes.
+3. (Future: EnrichLayer → skills, education → airtableUpdateCandidate for each row)
+4. (Future: PDL → GitHub URLs → airtableUpdateCandidate for each row)
+5. (Future: Nia Tracer → code analysis → airtableUpdateCandidate, stage: "Analyzed")
+6. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
+7. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
 
 **Phase 4 — Send + Drip (requires approval):**
 Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
@@ -70,6 +75,11 @@ export async function POST(req: Request) {
       // Apollo tools
       apolloSearchPeople,
       apolloBulkEnrich,
+
+      // Airtable tools
+      airtableCreateCandidates,
+      airtableUpdateCandidate,
+      airtableGetCandidates,
     },
     stopWhen: stepCountIs(15),
   });
