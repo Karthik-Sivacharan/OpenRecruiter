@@ -63,20 +63,22 @@ npm run typecheck       # tsc --noEmit
 
 ## Pipeline Flow (5 Phases)
 
-1. **Intake:** Fetch JD, ask follow-up questions (must-haves, location, count, preferences). Wait for answers.
-2. **Autonomous pipeline (no pauses):** Source -> Enrich -> Discover GitHub -> Analyze -> Score -> Draft emails -> Write everything to Airtable
-3. **Recruiter review:** Tell recruiter "Done, go check Airtable." Show summary table in chat. Wait.
-4. **Send + Drip:** Recruiter says "send all" or picks specific candidates. Confirm drip campaign details before scheduling.
-5. **Auto-reply:** AgentMail webhook reads candidate's Airtable row for context, auto-replies, updates Airtable.
+1. **Intake:** Fetch JD, ask follow-up questions (only about info NOT in JD). Wait for answers.
+2. **Search (free):** Apollo multi-pass search. Present results. Ask "Enrich these X candidates?"
+3. **Enrich + Analyze (autonomous after approval):** Apollo enrich → push to Airtable → EnrichLayer → PDL/GitHub → Nia → Score → Draft emails. Push to Airtable after EACH step so no data is lost.
+4. **Recruiter review:** "Done, go check Airtable." Show summary. Wait.
+5. **Send + Drip:** Recruiter controls sending. Confirm drip before scheduling.
+6. **Auto-reply:** AgentMail webhook reads candidate's Airtable row for context, auto-replies, updates Airtable.
 
 See `.claude/rules/recruiting-pipeline.md` for the detailed step-by-step.
 
 ## Approval Gates (NEVER Skip These)
 
 - **Intake questions:** Wait for recruiter to answer before sourcing
+- **Enrichment:** After search, before spending credits — "Enrich these X candidates?"
 - **Sending outreach:** Recruiter chooses: send all, pick specific, or send manually via AgentMail
 - **Drip campaign:** Propose details, confirm with recruiter before scheduling
-- **Everything else** (sourcing, enrichment, analysis, scoring, drafting): just run it autonomously
+- **Everything else** (each enrichment step, analysis, scoring, drafting): runs autonomously once enrichment approved
 
 ## Memory Rules
 

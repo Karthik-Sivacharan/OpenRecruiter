@@ -12,47 +12,47 @@
 4. Wait for recruiter to answer before proceeding
 5. Save role + all preferences to Graphiti
 
-### Phase 2: AUTONOMOUS PIPELINE (No Pauses — Agent Runs Everything)
+### Phase 2: SEARCH (Autonomous, Free)
 
-The agent runs this entire chain without stopping to ask. Just do it.
+1. `apolloSearchPeople` -> run 2-3 passes with title variations (FREE, no credits)
+2. Deduplicate results by name + company
+3. Present results: "Found X candidates. Top Y by relevance. Want me to enrich them?"
+4. **WAIT for recruiter approval** — this is the ONE enrichment gate
 
-**Sourcing:**
-1. `apollo_mixed_people_api_search` -> get candidate list
-2. `apollo_people_bulk_match` (batches of 10) -> get emails
-3. `enrichProfile` via EnrichLayer -> full LinkedIn data
-4. `enrichWorkEmail` via EnrichLayer -> verified work email (only if Apollo email missing)
+### Phase 3: ENRICH + ANALYZE (Autonomous After Approval — No More Pauses)
 
-**GitHub/Portfolio Discovery:**
-5. `pdlEnrichPerson` via PDL -> check for github_username, profiles[], websites[]
-6. `githubSearchByEmail` via GitHub GraphQL -> find GitHub from email
-7. If no GitHub: `githubSearchByName` -> name-based fallback
-8. If still no GitHub: `niaWebSearch` -> web search for GitHub/portfolio
-9. `githubFetchProfile` -> get websiteUrl, bio, README for portfolio links
+Once recruiter approves enrichment, run the full chain without stopping. Push to Airtable after EACH step so no data is ever lost.
 
-**Analysis + Scoring:**
-10. `niaTracer` on GitHub repos -> deep code analysis
-11. `niaTracer` on portfolio/blog sites -> portfolio analysis
-12. Score each candidate using `.claude/skills/scoring-rubric/` (internally calls Opus 4.6)
+**Step 1 — Apollo Enrich (1 credit/person):**
+5. `apolloBulkEnrich` (batches of 10, using apollo_ids) -> emails, employment history, company details, social URLs
+6. **Push to Airtable** → CREATE rows with all Apollo data. Stage: "Enriched"
 
-**Draft Outreach:**
-13. Generate personalized email per candidate using `.claude/skills/outreach-style/`
-14. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
+**Step 2 — Deep Enrichment (future):**
+7. `enrichProfile` via EnrichLayer -> skills, education, full job descriptions
+8. `enrichWorkEmail` via EnrichLayer -> verified work email (only if Apollo email missing/unverified)
+9. **Update Airtable rows** with EnrichLayer data
 
-**Write Everything to Airtable:**
-15. Create/update a row per candidate in Airtable with ALL data:
-    - Name, title, company, email, LinkedIn URL
-    - GitHub URL, portfolio URL, social links
-    - Nia Tracer analysis summary
-    - Score (1-10) + scoring rationale
-    - Draft outreach email text
-    - Pipeline stage: "Draft Ready"
+**Step 3 — GitHub/Portfolio Discovery (future):**
+10. `pdlEnrichPerson` via PDL -> github_url, websites[], profiles[]
+11. GitHub lookup chain: `githubSearchByEmail` -> `githubSearchByName` -> `niaWebSearch`
+12. `githubFetchProfile` -> websiteUrl, bio, README
+13. **Update Airtable rows** with GitHub/portfolio URLs
 
-### Phase 3: RECRUITER REVIEW (Pause and Wait)
+**Step 4 — Analysis + Scoring (future):**
+14. `niaTracer` on GitHub repos -> deep code analysis
+15. `niaTracer` on portfolio/blog sites -> portfolio analysis
+16. **Update Airtable rows** with Nia analysis. Stage: "Analyzed"
+17. Score each candidate using `.claude/skills/scoring-rubric/` (internally calls Opus 4.6)
+18. Generate personalized email draft using `.claude/skills/outreach-style/`
+19. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
+20. **Update Airtable rows** with score, rationale, draft email. Stage: "Scored"
 
-16. Agent tells recruiter: "Done. [N] candidates sourced, enriched, and scored. Draft emails ready. Go take a look in Airtable."
-17. Provide a summary table in chat: name, score, title, company (sorted by score descending)
-18. Wait for recruiter to review in Airtable
-19. Ask: "Want to send all outreach, or pick specific candidates?"
+### Phase 4: RECRUITER REVIEW (Pause and Wait)
+
+21. Agent tells recruiter: "Done. [N] candidates scored. Draft emails ready. Go take a look in Airtable."
+22. Provide a summary table in chat: name, score, title, company (sorted by score descending)
+23. Wait for recruiter to review in Airtable
+24. Ask: "Want to send all outreach, or pick specific candidates?"
 
 ### Phase 4: SEND + DRIP SETUP (Requires Approval)
 
@@ -88,11 +88,12 @@ The agent runs this entire chain without stopping to ask. Just do it.
 
 ## Approval Gates
 
-Only pause for recruiter approval on:
-- **Sending outreach emails** (Phase 4 — recruiter chooses send all, pick specific, or manual)
-- **Drip campaign scheduling** (Phase 4 — confirm cadence before scheduling)
+Pause for recruiter approval on:
+- **Enrichment** (Phase 2 → 3 — after search, before spending credits): "Found X candidates. Enrich top Y?"
+- **Sending outreach emails** (Phase 5 — recruiter chooses send all, pick specific, or manual)
+- **Drip campaign scheduling** (Phase 5 — confirm cadence before scheduling)
 
-Everything else (sourcing, enrichment, analysis, scoring, drafting): just run it.
+Everything else runs autonomously once enrichment is approved.
 
 ---
 
