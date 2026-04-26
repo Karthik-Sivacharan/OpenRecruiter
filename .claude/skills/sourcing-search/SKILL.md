@@ -134,12 +134,14 @@ AND education.degrees IN ('masters', 'doctorates')
 After search results come back:
 
 ```
-For EVERY candidate:
-  1. apollo_people_bulk_match → get email (batches of 10)
-  2. enrichProfile (EnrichLayer) → full LinkedIn data, skills, job history
+For EVERY candidate (batches of 10):
+  1. apolloBulkEnrich (pass apollo_ids) → email, email_status, employment
+     history, company details (industry, size, funding, tech stack),
+     social URLs (LinkedIn, GitHub, Twitter), seniority, engagement signals.
+     Costs 1 credit per person.
 
-For candidates with missing email:
-  3. enrichWorkEmail (EnrichLayer, 3 credits) → verified work email
+For candidates with missing/unverified email:
+  2. enrichWorkEmail (EnrichLayer, 3 credits) → verified work email (95%+ deliverability)
 
 For GitHub/portfolio discovery:
   4. pdlEnrichPerson → github_url, websites[], profiles[]
