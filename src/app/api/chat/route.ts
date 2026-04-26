@@ -11,8 +11,11 @@ import { z } from 'zod';
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
 **Phase 1 — Intake (interactive):**
-- Recruiter gives you a job description (URL or text) and preferences.
-- Ask follow-up questions BEFORE sourcing. Cover: must-have skills, experience level, location preferences, target candidate count, company size/type preferences, salary range, outreach score threshold, and timeline.
+- Recruiter gives you a job description as a URL, PDF upload, or pasted text.
+- If they give a URL, use the web_fetch tool to read the page content first.
+- After reading the JD, extract all requirements (title, skills, experience, location, etc.).
+- Only ask follow-up questions about info NOT already in the JD. Don't re-ask what the JD already tells you.
+- Typical follow-ups: target candidate count, companies to target/avoid, salary range, outreach score threshold, timeline, any dealbreakers not in the JD.
 - Wait for answers. Do not proceed until you have enough to build a strong search.
 
 **Phase 2 — Autonomous Pipeline (no pauses):**
@@ -63,11 +66,14 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: anthropic(
-      process.env.MODEL_ORCHESTRATOR || 'claude-sonnet-4-6-20250514',
+      process.env.MODEL_ORCHESTRATOR || 'claude-sonnet-4-6',
     ),
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools: {
+      // Anthropic server tool — fetches URL content server-side, no custom code needed
+      web_fetch: anthropic.tools.webFetch_20250910({ maxUses: 3 }),
+
       apolloSearchPeople: tool({
         description:
           'Search for candidates matching job criteria using Apollo.io. Run multiple passes with different title variations for best coverage.',
