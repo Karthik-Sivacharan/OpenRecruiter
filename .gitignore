@@ -4,3 +4,8 @@ node_modules/
 .next/
 archive/node_modules/
 archive/data/
+.claude/settings.local.json
+*.env.local
+.kiro/
+.windsurf/
+.agents/
