@@ -66,7 +66,15 @@ const ProfileSchema = z.object({
   experiences: z.array(ExperienceSchema).optional().default([]),
   education: z.array(EducationSchema).optional().default([]),
   skills: z.array(z.string()).optional().default([]),
-  certifications: z.array(z.unknown()).optional().default([]),
+  certifications: z.array(z.object({
+    starts_at: DatePartSchema,
+    ends_at: DatePartSchema,
+    name: z.string().nullable().optional(),
+    license_number: z.string().nullable().optional(),
+    display_source: z.string().nullable().optional(),
+    authority: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+  })).optional().default([]),
   languages: z.array(z.string()).optional().default([]),
   connections: z.number().nullable().optional(),
   extra: z
@@ -127,78 +135,6 @@ function buildUrl(
     }
   }
   return url.toString();
-}
-
-// ---------------------------------------------------------------------------
-// Helper: format profile into a clean candidate object
-// ---------------------------------------------------------------------------
-
-interface FormattedProfile {
-  name: string | null;
-  headline: string | null;
-  occupation: string | null;
-  location: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  linkedin_identifier: string | null;
-  summary: string | null;
-  connections: number | null;
-  github_id: string | null;
-  twitter_id: string | null;
-  skills: string[];
-  personal_emails: string[];
-  experiences: Array<{
-    company: string | null;
-    title: string | null;
-    description: string | null;
-    location: string | null;
-    start_year: number | null;
-    end_year: number | null;
-    current: boolean;
-  }>;
-  education: Array<{
-    school: string | null;
-    degree: string | null;
-    field_of_study: string | null;
-    start_year: number | null;
-    end_year: number | null;
-  }>;
-}
-
-function formatProfile(p: z.infer<typeof ProfileSchema>): FormattedProfile {
-  return {
-    name: p.full_name ?? ([p.first_name, p.last_name].filter(Boolean).join(' ') || null),
-    headline: p.headline ?? null,
-    occupation: p.occupation ?? null,
-    location: p.location_str ?? null,
-    city: p.city ?? null,
-    state: p.state ?? null,
-    country: p.country_full_name ?? p.country ?? null,
-    linkedin_identifier: p.public_identifier ?? null,
-    summary: p.summary ?? null,
-    connections: p.connections ?? null,
-    github_id: p.extra?.github_profile_id ?? null,
-    twitter_id: p.extra?.twitter_profile_id ?? null,
-    skills: p.skills ?? [],
-    personal_emails: p.personal_emails ?? [],
-    experiences: (p.experiences ?? []).map((e) => ({
-      company: e.company ?? null,
-      title: e.title ?? null,
-      description: e.description ?? null,
-      location: e.location ?? null,
-      start_year: e.starts_at?.year ?? null,
-      end_year: e.ends_at?.year ?? null,
-      current: e.ends_at === null || e.ends_at === undefined,
-    })),
-    education: (p.education ?? []).map((e) => ({
-      school: e.school ?? null,
-      degree: e.degree_name ?? null,
-      field_of_study: e.field_of_study ?? null,
-      start_year: e.starts_at?.year ?? null,
-      end_year: e.ends_at?.year ?? null,
-    })),
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +199,7 @@ export const enrichProfile = tool({
       };
     }
 
-    return { error: null, profile: formatProfile(parsed.data) };
+    return { error: null, profile: parsed.data };
   },
 });
 
@@ -342,7 +278,7 @@ export const enrichLookupPerson = tool({
           title: data.title_similarity_score ?? null,
           location: data.location_similarity_score ?? null,
         },
-        profile: data.profile ? formatProfile(data.profile) : null,
+        profile: data.profile ?? null,
       },
     };
   },
