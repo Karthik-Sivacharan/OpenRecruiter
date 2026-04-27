@@ -12,6 +12,7 @@ import {
   airtableUpdateCandidate,
   airtableGetCandidates,
 } from '@/lib/tools/airtable';
+import { enrichLayerEnrich } from '@/lib/tools/enrichlayer';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -33,11 +34,17 @@ const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent.
 Once recruiter approves enrichment, run the full chain without stopping:
 1. apolloBulkEnrich (batches of 10) → get emails, employment history, company details.
 2. Immediately push ALL enriched candidates to Airtable using airtableCreateCandidates. Set Pipeline Stage to "Enriched" and include the Role name. This ensures no data is lost if the pipeline crashes.
-3. (Future: EnrichLayer → skills, education → airtableUpdateCandidate for each row)
-4. (Future: PDL → GitHub URLs → airtableUpdateCandidate for each row)
-5. (Future: Nia Tracer → code analysis → airtableUpdateCandidate, stage: "Analyzed")
-6. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
-7. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
+3. enrichLayerEnrich → pass each candidate's name, company, linkedin_url, and set has_apollo_email=true if Apollo found a verified email. This returns skills, education, certifications, personal emails, and full job history.
+4. For EACH candidate in the enrichLayerEnrich results, call airtableUpdateCandidate with their record_id and the following fields:
+   - "Personal Email": first personal email (best for outreach — no corporate filters)
+   - "Skills": comma-separated skill list
+   - "Education": JSON array [{school, degree, field_of_study, start_date, end_date}]
+   - "Certifications": JSON array [{name, authority, url}]
+   - "EnrichLayer ID": the enrichlayer_id for future lookups
+5. (Future: PDL → GitHub URLs → airtableUpdateCandidate for each row)
+6. (Future: Nia Tracer → code analysis → airtableUpdateCandidate, stage: "Analyzed")
+7. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
+8. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
 
 **Phase 4 — Send + Drip (requires approval):**
 Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
@@ -75,6 +82,9 @@ export async function POST(req: Request) {
       // Apollo tools
       apolloSearchPeople,
       apolloBulkEnrich,
+
+      // EnrichLayer tools
+      enrichLayerEnrich,
 
       // Airtable tools
       airtableCreateCandidates,
