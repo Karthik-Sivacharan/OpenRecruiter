@@ -17,90 +17,66 @@ Apollo (search + basic enrich)
 
 ## EnrichLayer API Reference
 
-> **TODO:** Review official docs at https://enrichlayer.com/docs to verify exact response schemas,
-> confirm all field names, and optimize our API call strategy. Same for Airtable field mapping.
+> **TODO:** Review Airtable field mapping to ensure all EnrichLayer fields are captured optimally.
 
 ### Authentication
 ```
 Authorization: Bearer <ENRICHLAYER_API_KEY>
 Base URL: https://enrichlayer.com/api/v2
-All endpoints: GET
+All endpoints: GET with query parameters
 Rate limit: 300 req/min
 ```
 
-### API is ID-Based
+### API is URL-Based
 
-EnrichLayer uses internal person/company IDs. You must look up the ID first, then fetch data.
+EnrichLayer takes LinkedIn URLs directly — no ID lookup step needed.
 
 ### Key Endpoints for Recruiting
 
-#### People API
+#### Profile API (People)
 
-| Endpoint | Method | Required Params | Credits | Returns |
+| Endpoint | Required Params | Optional Params | Credits | Returns |
 |---|---|---|---|---|
-| `/people` | GET | name + company info | 2 | Person ID match |
-| `/people/{id}` | GET | person ID | 1 | Full profile: job history, education, skills, certs, **personal_emails**, personal_numbers |
-| `/people/{id}/picture` | GET | person ID | 0 | Profile image |
-| `/people/{id}/work-email` | GET | person ID | 3 | Verified work email (95%+ deliverability). Async, supports webhooks |
-| `/people/{id}/personal-email` | GET | person ID | 1/email | Personal emails (fallback if profile didn't include them) |
-| `/people/{id}/phone-number` | GET | person ID | 1/number | Personal phone numbers (E.164) |
-
-#### Company API
-
-| Endpoint | Method | Required Params | Credits | Returns |
-|---|---|---|---|---|
-| `/companies` | GET | name or domain + location | 2 | Company ID match |
-| `/companies/{id}` | GET | company ID | 1 | Company profile, size, HQ, industry |
-| `/companies/{id}/picture` | GET | company ID | 0 | Company logo |
-| `/companies/{id}/resolve` | GET | vanity ID | 0 | Numeric company ID |
-| `/companies/{id}/employee-count` | GET | company ID | 1 | Total employees |
-| `/companies/{id}/employees` | GET | company ID | 3/employee | Employee listing |
-| `/companies/{id}/employees/search` | GET | company ID + job title | 10 | Search employees by title |
+| `GET /profile` | `profile_url` (LinkedIn URL) | `skills=include`, `personal_email=include`, `github_profile_id=include`, `extra=include`, `use_cache=if-present` | 1 (+extras) | Full profile: experiences, education, skills, personal emails, GitHub ID |
+| `GET /profile/resolve` | `first_name`, `last_name` | `company_domain`, `title`, `location`, `enrich_profile=enrich`, `similarity_checks=include` | 2 (+1 if enrich) | LinkedIn URL + similarity scores + optional full profile |
+| `GET /profile/email` | `profile_url` | | 3 | Verified work email (95%+ deliverability). May be async |
 
 #### Contact API
 
-| Endpoint | Method | Required Params | Credits | Returns |
-|---|---|---|---|---|
-| `/contact/reverse-email` | GET | email | 3 | Person profile from email (reverse lookup) |
-| `/contact/reverse-phone` | GET | phone (E.164) | 3 | Social profiles from phone |
-| `/contact/disposable-email-check` | GET | email | 0 | Boolean: is it a disposable email? |
-
-#### Search API
-
-| Endpoint | Method | Params | Credits | Returns |
-|---|---|---|---|---|
-| `/search/people` | GET | title, location, company, industry, skills | 3/profile URL | Up to 10M results |
-| `/search/companies` | GET | name, industry, location, revenue | 3/company URL | Up to 10M results |
-
-#### Other
-
-| Endpoint | Method | Credits | Returns |
+| Endpoint | Required Params | Credits | Returns |
 |---|---|---|---|
-| `/role-lookup` | GET | 3 | Person who holds a specific role at a company |
-| `/jobs/{id}` | GET | 2 | Job profile |
-| `/companies/{id}/jobs` | GET | 2 | Company job listings |
-| `/schools/{id}` | GET | 1 | School profile |
-| `/credit-balance` | GET | 0 | Current credit balance |
+| `GET /contact-api/personal-email` | `profile_url` | 1/email | Personal emails |
+| `GET /contact-api/personal-contact` | `profile_url` | 1/number | Personal phone numbers |
+| `GET /contact/reverse-email` | `email` | 3 | Person profile from email (reverse lookup) |
+| `GET /contact/disposable-email-check` | `email` | 0 | Boolean: is it disposable? |
 
-### Person Profile Response (194 fields)
+#### Company & Other
 
-`GET /people/{id}` returns:
+| Endpoint | Credits | Returns |
+|---|---|---|
+| `GET /company?url=<linkedin_company>` | 1 | Company profile |
+| `GET /find/company/role/?role=X&company_name=Y` | 3 | Person holding a specific role |
+| `GET /credit-balance` | 0 | Current credit balance |
+
+### Profile Response Fields
+
+`GET /profile?profile_url=...&skills=include&personal_email=include&extra=include` returns:
 
 | Category | Key Fields |
 |---|---|
-| Identity | `public_identifier`, `first_name`, `last_name`, `full_name`, `gender`, `birth_date` |
+| Identity | `public_identifier`, `first_name`, `last_name`, `full_name`, `gender` |
 | Professional | `occupation`, `headline`, `summary`, `industry`, `inferred_salary` |
-| Location | `country`, `country_full_name`, `city`, `state` |
-| Contact | **`personal_emails`** (array), **`personal_numbers`** (array) |
-| Experience | `experiences` (array of jobs with descriptions, dates) |
-| Education | `education` (array with degree, field, dates) |
+| Location | `country`, `country_full_name`, `city`, `state`, `location_str` |
+| Contact | `personal_emails` (array), `personal_numbers` (array) |
+| Experience | `experiences` (array with company, title, description, starts_at, ends_at, location) |
+| Education | `education` (array with school, degree_name, field_of_study, starts_at, ends_at) |
 | Skills | `skills` (array of strings) |
-| Social | `follower_count`, `connections`, `interests`, `languages` |
-| Accomplishments | `certifications`, `accomplishment_patents`, `accomplishment_publications`, `accomplishment_honors_awards`, `accomplishment_courses`, `accomplishment_projects` |
-| Content | `articles`, `activities`, `groups`, `recommendations` |
-| Related | `people_also_viewed`, `similarly_named_profiles` |
+| Social | `follower_count`, `connections`, `languages` |
+| Extra | `extra.github_profile_id`, `extra.twitter_profile_id`, `extra.facebook_profile_id` |
+| Accomplishments | `certifications` |
+| Meta | `meta.thin_profile`, `meta.last_updated` |
 
-**Key insight:** The profile endpoint already includes `personal_emails`. The separate `/personal-email` endpoint is only needed as a fallback if the profile returns empty.
+Dates use `{day, month, year}` objects, not ISO strings.
 
 ### What EnrichLayer Gives That Apollo Does NOT
 
@@ -126,55 +102,53 @@ Free trial: 500 credits. Credits never expire (unless 18 months inactive).
 
 ---
 
-## Our EnrichLayer Tool: `enrichLayerEnrich`
+## Our EnrichLayer Tools (3 tools)
 
-One tool, smart fallback logic:
-
+### `enrichProfile` — Primary tool (most candidates)
 ```
-Input: name, company, linkedin_url (from Apollo)
-                    |
-Step 1: GET /people (name + company) --> person ID          [2 credits]
-                    |
-Step 2: GET /people/{id} --> full profile + personal_emails [1 credit]
-                    |
-         personal_emails in response?
-           /              \
-         YES               NO
-          |                 |
-    Use personal       Step 3: GET /people/{id}/personal-email  [1 credit]
-    email for               |
-    outreach          Got personal email?
-                       /              \
-                     YES               NO
-                      |                 |
-                Use personal      Has Apollo work email?
-                email for           /           \
-                outreach          YES             NO
-                                   |               |
-                             Use Apollo        Step 4: GET /people/{id}/work-email [3 credits]
-                             work email        (last resort verified work email)
+Input: linkedin_url (from Apollo)
+  --> GET /profile?profile_url=X&skills=include&personal_email=include&extra=include
+  --> Returns: experiences, education, skills, personal_emails, github_id
+  --> 1 credit
+```
+
+### `enrichLookupPerson` — Fallback (no LinkedIn URL)
+```
+Input: first_name, last_name, company_domain
+  --> GET /profile/resolve?first_name=X&last_name=Y&company_domain=Z&enrich_profile=enrich
+  --> Returns: matched LinkedIn URL + similarity scores + full profile
+  --> 2-3 credits
+```
+
+### `enrichWorkEmail` — Last resort (no email at all)
+```
+Input: linkedin_url
+  --> GET /profile/email?profile_url=X
+  --> Returns: verified work email (95%+ deliverability), may be async
+  --> 3 credits
 ```
 
 ### Email Priority for Outreach
-1. **Personal email** (from profile or fallback endpoint) -- best for recruiting, no corporate filters
+1. **Personal email** (from enrichProfile response) -- best for recruiting, no corporate filters
 2. **Apollo work email** (already have it, free) -- good enough if personal unavailable
 3. **EnrichLayer verified work email** (3 credits, rare fallback) -- only if nothing else
 
 ### Credit Cost Per Candidate
-- **Best case:** 3 credits (lookup + profile, personal email included)
-- **Typical case:** 4 credits (lookup + profile + personal email fallback)
-- **Worst case:** 7 credits (all of the above + work email fallback)
+- **Typical case:** 1 credit (enrichProfile with LinkedIn URL — most Apollo candidates have one)
+- **No LinkedIn URL:** 2-3 credits (enrichLookupPerson by name+company)
+- **No email at all:** +3 credits (enrichWorkEmail fallback)
 
 ### Cost for 50 Candidates
 
 ```
-50x Person Lookup                     = 100 credits
-50x Person Profile                    = 50 credits
-~20x Personal Email fallback          = 20 credits
-~5x Work Email fallback (rare)        = 15 credits
-                                        ----
-                                        ~185 credits (~$3.15 at Starter rate)
+45x enrichProfile (have LinkedIn URL)  = 45 credits
+5x enrichLookupPerson (no LinkedIn)    = 15 credits
+~5x enrichWorkEmail (no email at all)  = 15 credits
+                                         ----
+                                         ~75 credits (~$1.28 at Starter rate)
 ```
+
+Much cheaper than the old ID-based approach since we skip the lookup step for most candidates.
 
 ---
 
