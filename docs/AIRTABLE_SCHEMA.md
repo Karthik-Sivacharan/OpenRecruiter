@@ -50,11 +50,14 @@ Table Name: `Candidate Leads`
 | Likely to Engage | singleLineText | Apollo | "true" or "false" |
 | Apollo ID | singleLineText | Apollo | For re-enrichment and dedup |
 
-### Deep Enrichment (future — EnrichLayer, PDL)
+### Deep Enrichment (EnrichLayer, PDL)
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
+| Personal Email | email | EnrichLayer | Personal email for outreach (gmail, etc.) — preferred over work email |
 | Skills | multilineText | EnrichLayer | Comma-separated skill list |
-| Education | multilineText | EnrichLayer | JSON: [{school, degree, field, dates}] |
+| Education | multilineText | EnrichLayer | JSON: [{school, degree, field_of_study, start_date, end_date}] |
+| Certifications | multilineText | EnrichLayer | JSON: [{name, authority, url}] |
+| EnrichLayer ID | singleLineText | EnrichLayer | For future re-enrichment |
 
 ### Analysis & Scoring (future — Nia, Opus)
 | Field | Type | Source | Notes |
@@ -93,7 +96,7 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 | Step | Action | Fields Updated | Stage Set |
 |------|--------|---------------|-----------|
 | Apollo Enrich | CREATE row | Name, Email, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
-| EnrichLayer | UPDATE row | Skills, Education | (stays Enriched) |
+| EnrichLayer | UPDATE row | Personal Email, Skills, Education, Certifications, EnrichLayer ID | (stays Enriched) |
 | PDL / GitHub | UPDATE row | GitHub URL | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
 | Scoring | UPDATE row | Score, Score Rationale | Scored |
