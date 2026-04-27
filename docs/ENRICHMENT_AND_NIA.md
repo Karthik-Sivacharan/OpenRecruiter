@@ -8,7 +8,7 @@ Apollo does NOT give you: full job history, education details, personal emails/p
 **The enrichment pipeline:**
 ```
 Apollo (search + basic enrich)
-  --> EnrichLayer (deep LinkedIn profile + work email verification)
+  --> EnrichLayer (deep profile + personal emails)
   --> Nia Tracer (GitHub code analysis)
   --> Claude (score everything 1-10)
 ```
@@ -17,62 +17,101 @@ Apollo (search + basic enrich)
 
 ## EnrichLayer API Reference
 
+> **TODO:** Review official docs at https://enrichlayer.com/docs to verify exact response schemas,
+> confirm all field names, and optimize our API call strategy. Same for Airtable field mapping.
+
 ### Authentication
 ```
 Authorization: Bearer <ENRICHLAYER_API_KEY>
 Base URL: https://enrichlayer.com/api/v2
-All endpoints: GET with query parameters
+All endpoints: GET
 Rate limit: 300 req/min
 ```
 
+### API is ID-Based
+
+EnrichLayer uses internal person/company IDs. You must look up the ID first, then fetch data.
+
 ### Key Endpoints for Recruiting
 
-| Endpoint | What It Returns | Credits | Use Case |
+#### People API
+
+| Endpoint | Method | Required Params | Credits | Returns |
+|---|---|---|---|---|
+| `/people` | GET | name + company info | 2 | Person ID match |
+| `/people/{id}` | GET | person ID | 1 | Full profile: job history, education, skills, certs, **personal_emails**, personal_numbers |
+| `/people/{id}/picture` | GET | person ID | 0 | Profile image |
+| `/people/{id}/work-email` | GET | person ID | 3 | Verified work email (95%+ deliverability). Async, supports webhooks |
+| `/people/{id}/personal-email` | GET | person ID | 1/email | Personal emails (fallback if profile didn't include them) |
+| `/people/{id}/phone-number` | GET | person ID | 1/number | Personal phone numbers (E.164) |
+
+#### Company API
+
+| Endpoint | Method | Required Params | Credits | Returns |
+|---|---|---|---|---|
+| `/companies` | GET | name or domain + location | 2 | Company ID match |
+| `/companies/{id}` | GET | company ID | 1 | Company profile, size, HQ, industry |
+| `/companies/{id}/picture` | GET | company ID | 0 | Company logo |
+| `/companies/{id}/resolve` | GET | vanity ID | 0 | Numeric company ID |
+| `/companies/{id}/employee-count` | GET | company ID | 1 | Total employees |
+| `/companies/{id}/employees` | GET | company ID | 3/employee | Employee listing |
+| `/companies/{id}/employees/search` | GET | company ID + job title | 10 | Search employees by title |
+
+#### Contact API
+
+| Endpoint | Method | Required Params | Credits | Returns |
+|---|---|---|---|---|
+| `/contact/reverse-email` | GET | email | 3 | Person profile from email (reverse lookup) |
+| `/contact/reverse-phone` | GET | phone (E.164) | 3 | Social profiles from phone |
+| `/contact/disposable-email-check` | GET | email | 0 | Boolean: is it a disposable email? |
+
+#### Search API
+
+| Endpoint | Method | Params | Credits | Returns |
+|---|---|---|---|---|
+| `/search/people` | GET | title, location, company, industry, skills | 3/profile URL | Up to 10M results |
+| `/search/companies` | GET | name, industry, location, revenue | 3/company URL | Up to 10M results |
+
+#### Other
+
+| Endpoint | Method | Credits | Returns |
 |---|---|---|---|
-| `/profile?profile_url=<linkedin>` | Full profile: job history, education, certs, skills, recommendations | 1 (+extras) | Deep candidate profiling |
-| `/profile/email?profile_url=<linkedin>` | Verified work email (95%+ deliverability) | 3 | Better email than Apollo |
-| `/contact-api/personal-email?profile_url=<linkedin>` | Personal emails (gmail, etc.) | 1/email | Reach candidates on personal email |
-| `/contact-api/personal-contact?profile_url=<linkedin>` | Personal phone numbers | 1/number | Direct outreach |
-| `/profile/resolve?company_domain=X&first_name=Y` | LinkedIn URL from name+company | 2 | Find LinkedIn when Apollo doesn't have it |
-| `/find/company/role/?role=X&company_name=Y` | Who holds a specific role at a company | 3 | Find hiring managers for warm intros |
-| `/search/person?current_role_title=X&skills=Y` | Search people by filters | 3/result | Alternative to Apollo search |
-| `/profile/resolve/email?email=X` | Full profile from any email address | 3 | Reverse lookup on reply emails |
-| `/company?url=<linkedin_company>` | Company profile, size, HQ, industry | 1 | Enrich company data |
+| `/role-lookup` | GET | 3 | Person who holds a specific role at a company |
+| `/jobs/{id}` | GET | 2 | Job profile |
+| `/companies/{id}/jobs` | GET | 2 | Company job listings |
+| `/schools/{id}` | GET | 1 | School profile |
+| `/credit-balance` | GET | 0 | Current credit balance |
+
+### Person Profile Response (194 fields)
+
+`GET /people/{id}` returns:
+
+| Category | Key Fields |
+|---|---|
+| Identity | `public_identifier`, `first_name`, `last_name`, `full_name`, `gender`, `birth_date` |
+| Professional | `occupation`, `headline`, `summary`, `industry`, `inferred_salary` |
+| Location | `country`, `country_full_name`, `city`, `state` |
+| Contact | **`personal_emails`** (array), **`personal_numbers`** (array) |
+| Experience | `experiences` (array of jobs with descriptions, dates) |
+| Education | `education` (array with degree, field, dates) |
+| Skills | `skills` (array of strings) |
+| Social | `follower_count`, `connections`, `interests`, `languages` |
+| Accomplishments | `certifications`, `accomplishment_patents`, `accomplishment_publications`, `accomplishment_honors_awards`, `accomplishment_courses`, `accomplishment_projects` |
+| Content | `articles`, `activities`, `groups`, `recommendations` |
+| Related | `people_also_viewed`, `similarly_named_profiles` |
+
+**Key insight:** The profile endpoint already includes `personal_emails`. The separate `/personal-email` endpoint is only needed as a fallback if the profile returns empty.
 
 ### What EnrichLayer Gives That Apollo Does NOT
 
-1. **Full LinkedIn job history** with descriptions, dates, company logos
+1. **Full LinkedIn job history** with descriptions, dates
 2. **Full education** with degree, field of study, dates
-3. **Personal emails and phone numbers** (Apollo only has work emails)
-4. **95%+ deliverability guarantee** on work emails (Apollo is ~80-90%)
-5. **Reverse phone/email lookup** -- find LinkedIn from a phone number or personal email
-6. **Role lookup** -- find who is CEO/CTO/Head of Engineering at any company (for warm intros)
-7. **Certifications, patents, publications, awards** from LinkedIn
-8. **Profile freshness control** -- force a live crawl with `live_fetch=force`
-
-### Calling from Claude Code (No MCP)
-
-```bash
-# Person profile (full LinkedIn data)
-curl -s "https://enrichlayer.com/api/v2/profile?profile_url=https%3A%2F%2Flinkedin.com%2Fin%2Fjohndoe&skills=include&extra=include" \
-  -H "Authorization: Bearer $ENRICHLAYER_API_KEY" | jq .
-
-# Work email (95%+ deliverability)
-curl -s "https://enrichlayer.com/api/v2/profile/email?profile_url=https%3A%2F%2Flinkedin.com%2Fin%2Fjohndoe" \
-  -H "Authorization: Bearer $ENRICHLAYER_API_KEY" | jq .
-
-# Find hiring manager for warm intro
-curl -s "https://enrichlayer.com/api/v2/find/company/role/?role=head%20of%20engineering&company_name=eragon&enrich_profile=enrich" \
-  -H "Authorization: Bearer $ENRICHLAYER_API_KEY" | jq .
-
-# Reverse email lookup (candidate replied, who are they?)
-curl -s "https://enrichlayer.com/api/v2/profile/resolve/email?email=jane%40gmail.com&enrich_profile=enrich" \
-  -H "Authorization: Bearer $ENRICHLAYER_API_KEY" | jq .
-
-# Check credit balance
-curl -s "https://enrichlayer.com/api/v2/credit-balance" \
-  -H "Authorization: Bearer $ENRICHLAYER_API_KEY" | jq .
-```
+3. **Personal emails** included in profile response (Apollo only has work emails)
+4. **Personal phone numbers**
+5. **Skills, certifications, patents, publications, awards**
+6. **Reverse email/phone lookup** -- find person from a phone number or personal email
+7. **Role lookup** -- find who is CEO/CTO/Head of Engineering at any company (for warm intros)
+8. **95%+ deliverability guarantee** on work emails via dedicated endpoint
 
 ### Pricing
 
@@ -85,18 +124,57 @@ curl -s "https://enrichlayer.com/api/v2/credit-balance" \
 
 Free trial: 500 credits. Credits never expire (unless 18 months inactive).
 
+---
+
+## Our EnrichLayer Tool: `enrichLayerEnrich`
+
+One tool, smart fallback logic:
+
+```
+Input: name, company, linkedin_url (from Apollo)
+                    |
+Step 1: GET /people (name + company) --> person ID          [2 credits]
+                    |
+Step 2: GET /people/{id} --> full profile + personal_emails [1 credit]
+                    |
+         personal_emails in response?
+           /              \
+         YES               NO
+          |                 |
+    Use personal       Step 3: GET /people/{id}/personal-email  [1 credit]
+    email for               |
+    outreach          Got personal email?
+                       /              \
+                     YES               NO
+                      |                 |
+                Use personal      Has Apollo work email?
+                email for           /           \
+                outreach          YES             NO
+                                   |               |
+                             Use Apollo        Step 4: GET /people/{id}/work-email [3 credits]
+                             work email        (last resort verified work email)
+```
+
+### Email Priority for Outreach
+1. **Personal email** (from profile or fallback endpoint) -- best for recruiting, no corporate filters
+2. **Apollo work email** (already have it, free) -- good enough if personal unavailable
+3. **EnrichLayer verified work email** (3 credits, rare fallback) -- only if nothing else
+
+### Credit Cost Per Candidate
+- **Best case:** 3 credits (lookup + profile, personal email included)
+- **Typical case:** 4 credits (lookup + profile + personal email fallback)
+- **Worst case:** 7 credits (all of the above + work email fallback)
+
 ### Cost for 50 Candidates
 
 ```
-50x Person Profile (full LinkedIn)     = 50 credits  ($1.30 at Starter rate)
-50x Work Email Lookup                  = 150 credits ($2.55)
-10x Personal Email (top candidates)    = 10 credits  ($0.17)
-5x Role Lookup (hiring managers)       = 15 credits  ($0.26)
-                                         ----
-                                         225 credits  (~$3.80 at Starter rate)
+50x Person Lookup                     = 100 credits
+50x Person Profile                    = 50 credits
+~20x Personal Email fallback          = 20 credits
+~5x Work Email fallback (rare)        = 15 credits
+                                        ----
+                                        ~185 credits (~$3.15 at Starter rate)
 ```
-
-Very affordable. The Starter annual plan ($588/yr = $49/mo) gives 35,000 credits -- enough for ~150 full enrichments per month.
 
 ---
 
@@ -258,7 +336,7 @@ echo "your-api-key" > ~/.config/nia/api_key
 
 ---
 
-## Updated Enrichment Pipeline
+## Full Enrichment Pipeline
 
 ### For Every Candidate (50 candidates)
 
@@ -266,54 +344,53 @@ echo "your-api-key" > ~/.config/nia/api_key
 1. Apollo Search (FREE)
    --> name, title, company, LinkedIn URL
 
-2. Apollo Enrich (1 credit/person)
-   --> work email (80-90% accuracy)
+2. Apollo Enrich (1 Apollo credit/person)
+   --> work email (80-90% accuracy), employment history, social URLs
 
-3. EnrichLayer Profile (1 credit)
-   --> full job history, education, skills, certs
-   --> only if LinkedIn URL available
+3. EnrichLayer Enrich (3-4 credits/person)
+   --> GET /people (lookup) + GET /people/{id} (full profile)
+   --> job history, education, skills, certs, personal emails
+   --> fallback to /personal-email endpoint if profile didn't include them
+   --> fallback to /work-email only if no email exists at all
+   --> Push to Airtable after this step
 
-4. EnrichLayer Work Email (3 credits)
-   --> verified work email (95%+ deliverability)
-   --> only if Apollo email bounces or is missing
-
-5. Claude Score (tokens only)
+4. Claude Score (tokens only)
    --> fit score 1-10 based on JD + enriched profile
 ```
 
 ### For Top 10-15 Shortlisted Candidates
 
 ```
-6. Find GitHub (multiple approaches):
+5. Find GitHub (multiple approaches):
    a. GitHub API email lookup (free, ~88% hit rate)
    b. Nia Web Search with CATEGORY=github (1 credit)
-   c. EnrichLayer profile often includes GitHub in extras
+   c. EnrichLayer profile may include GitHub in extras
 
-7. Nia Sandbox Search (quick scan, ~1 credit)
+6. Nia Sandbox Search (quick scan, ~1 credit)
    --> fast assessment of top repos
 
-8. Nia Tracer (deep analysis, 15 credits)
+7. Nia Tracer (deep analysis, 15 credits)
    --> only for top 5-10 candidates
    --> mode: tracer-fast for screening, tracer-deep for finalists
 
-9. Re-score with GitHub data
+8. Re-score with GitHub data
    --> Claude re-scores with GitHub analysis factored in
 
-10. EnrichLayer Role Lookup (3 credits)
-    --> find hiring manager for warm intros
+9. EnrichLayer Role Lookup (3 credits)
+   --> find hiring manager for warm intros
 ```
 
 ### For Finalist Candidates (Top 3-5)
 
 ```
-11. Nia Oracle (deep research, 15 credits)
+10. Nia Oracle (deep research, 15 credits)
     --> comprehensive technical profile
     --> only for final shortlist
 
-12. EnrichLayer Personal Contact (1 credit/number)
+11. EnrichLayer Personal Contact (1 credit/number)
     --> personal phone for direct outreach
 
-13. Warm intro to hiring manager
+12. Warm intro to hiring manager
     --> EnrichLayer Role Lookup found the right person
     --> AgentMail sends structured candidate brief
 ```
@@ -326,8 +403,7 @@ echo "your-api-key" > ~/.config/nia/api_key
 |---|---|---|
 | Apollo Search | 50 candidates | FREE |
 | Apollo Enrich | 50 x 1 credit | 50 Apollo credits |
-| EnrichLayer Profile | 50 x 1 credit | 50 credits (~$0.85) |
-| EnrichLayer Work Email | 15 x 3 credits (bounced only) | 45 credits (~$0.77) |
+| EnrichLayer Enrich | 50 x ~3.5 credits avg | ~175 credits (~$3.00) |
 | Nia Web Search | 15 x 1 credit | 15 credits |
 | Nia Sandbox Search | 10 x ~1 credit | 10 credits |
 | Nia Tracer | 5 x 15 credits | 75 credits |
