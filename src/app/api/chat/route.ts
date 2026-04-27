@@ -49,7 +49,7 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - "Skills": join the skills array with ", ". If the skills array is empty, do NOT set this field.
    - "Education": JSON.stringify the FULL education array — include ALL entries, never truncate or pick a subset.
    - "Certifications": JSON.stringify the FULL certifications array — include ALL entries, even if just one.
-   - "Employment History": JSON.stringify the FULL experiences array from enrichProfile. This OVERWRITES Apollo's employment history because EnrichLayer includes job descriptions that Apollo does not.
+   - "EnrichLayer Experiences": JSON.stringify the FULL experiences array from enrichProfile. This is a SEPARATE field from Apollo's "Employment History" — do NOT overwrite Employment History. EnrichLayer has richer job descriptions but may have stale current-role data. Both are kept for the scoring step to reconcile.
 
    SET only if the value is non-null/non-empty in the response:
    - "Personal Email": first entry from personal_emails array.
@@ -60,6 +60,7 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - Truncate or filter any arrays — save the COMPLETE data.
    - Skip the Certifications field — always check and save it.
    - Modify, rephrase, or "improve" any values from the API response.
+   - Overwrite Apollo's "Employment History" — it stays as-is.
 
 **Step 4 — Work email fallback:**
 5. If a candidate has NO email at all (no Apollo email AND no personal email from enrichProfile), call enrichWorkEmail with their linkedin_url.

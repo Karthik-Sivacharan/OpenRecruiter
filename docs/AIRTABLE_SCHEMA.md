@@ -57,6 +57,7 @@ Table Name: `Candidate Leads`
 | Skills | multilineText | EnrichLayer | Comma-separated skill list |
 | Education | multilineText | EnrichLayer | JSON: [{school, degree, field_of_study, start_date, end_date}] |
 | Certifications | multilineText | EnrichLayer | JSON: [{name, authority, url}] |
+| EnrichLayer Experiences | multilineText | EnrichLayer | JSON: full experiences array with job descriptions. Separate from Apollo's Employment History — EnrichLayer has descriptions but may be stale. Apollo's Employment History is untouched. |
 | EnrichLayer ID | singleLineText | EnrichLayer | For future re-enrichment |
 
 ### Analysis & Scoring (future — Nia, Opus)
@@ -96,7 +97,7 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 | Step | Action | Fields Updated | Stage Set |
 |------|--------|---------------|-----------|
 | Apollo Enrich | CREATE row | Name, Email, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
-| EnrichLayer | UPDATE row | Personal Email, Skills, Education, Certifications, EnrichLayer ID | (stays Enriched) |
+| EnrichLayer | UPDATE row | Personal Email, Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
 | PDL / GitHub | UPDATE row | GitHub URL | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
 | Scoring | UPDATE row | Score, Score Rationale | Scored |
