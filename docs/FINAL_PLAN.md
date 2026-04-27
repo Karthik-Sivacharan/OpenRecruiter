@@ -214,17 +214,20 @@ Returns: `github_url`, `github_username`, `profiles[]`, `websites[]`, `facebook_
 
 ## Implementation Phases (With Parallel Worktrees + Test Checkpoints)
 
-### PHASE 1: Foundation (Days 1-2)
+### PHASE 1: Foundation (Days 1-2) — COMPLETED
 
-Build the Next.js app skeleton + first two tool integrations. Test sourcing.
+Build the Next.js app skeleton + tool integrations. Test sourcing + enrichment + CRM push.
 
-| Task | What | Parallel? | Test |
+| Task | What | Status | Test |
 |---|---|---|---|
-| 1A | `npx create-next-app openrecruiter-v2 --typescript --app`. Install `ai`, `@ai-sdk/anthropic`, `zod`. Build `/api/chat/route.ts` skeleton + basic `useChat` frontend (plain chat: input box, message list, streaming). | -- | Chat sends message, gets Claude response |
-| 1B | Build Apollo tool functions (`apolloSearchPeople`, `apolloBulkEnrich`). Wire into chat route. | After 1A | *"Find ML engineers in SF"* returns candidate list in chat |
-| 1C | Build Airtable tool functions (`airtableCreateRecord`, `airtableUpdateStatus`, `airtableFindByEmail`, `airtableGetPipeline`). Set up Airtable base with fields. | Parallel with 1B (worktree) | Candidates appear in Airtable (open in separate tab) |
+| 1A | Next.js 16 app with TypeScript, Tailwind, App Router. `/api/chat/route.ts` with Sonnet 4.6 + `useChat` frontend with ai-elements (conversation, message, prompt-input, tool display, confirmation, reasoning). Linear-inspired dark theme. | DONE | Chat sends message, gets streaming Claude response |
+| 1B | Apollo tools: `apolloSearchPeople` (multi-pass title search) + `apolloBulkEnrich` (batch of 10, by apollo_id → emails, employment history, company details). Extracted to `lib/tools/apollo.ts`. | DONE | Search returns candidates, enrich returns emails + full data |
+| 1C | Airtable tools: `airtableCreateCandidates` (batch create with field mapping) + `airtableUpdateCandidate` (incremental updates) + `airtableGetCandidates` (list with role filter). 34-field schema created via API. Extracted to `lib/tools/airtable.ts`. | DONE | Enriched candidates appear in Airtable with all data |
+| 1D | `web_fetch` tool (Anthropic server tool) for reading JD URLs. Smart intake: reads JD first, only asks follow-up questions about info NOT in the JD. | DONE | Paste URL → agent reads page → asks relevant follow-ups only |
+| 1E | Enrichment approval gate: agent shows search results first, asks "Enrich these X candidates?" before spending credits. | DONE | Agent pauses after search, waits for approval |
+| 1F | Claude Code system setup: CLAUDE.md, PRODUCT.md, DESIGN.md, rules (pipeline, coding standards), 6 recruiting skills, superpowers + impeccable plugins, .mcp.json, model routing (Sonnet 4.6 orchestrator + Opus 4.6 for scoring). | DONE | Every session auto-loads context, skills trigger on keywords |
 
-**TEST CHECKPOINT 1:** Type *"Find 5 ML engineers in SF"* in chat. Candidates appear in Airtable (separate tab). Scores are empty (not enriched yet).
+**TEST CHECKPOINT 1 — PASSED:** Type *"Find ML engineers in SF"* → agent searches (multi-pass), asks before enriching, enriches with emails + company data, pushes to Airtable. Candidates appear in "Candidate Leads" table with Pipeline Stage = "Enriched".
 
 ---
 
