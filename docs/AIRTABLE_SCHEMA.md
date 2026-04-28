@@ -14,10 +14,10 @@ Table Name: `Candidate Leads`
 | Email Status | singleLineText | Apollo | "verified", "extrapolated", "guessed" |
 | Email Confidence | singleLineText | Apollo | 0-1 confidence score (only when status is "extrapolated") |
 | Personal Email | email | Apollo / EnrichLayer | Best personal email (gmail, etc.) — preferred for outreach |
-| All Emails | multilineText | Apollo + EnrichLayer | JSON: [{email, source, type, status, confidence}] — every email from all sources |
+| All Emails | multilineText | Apollo + EnrichLayer | Readable text: "email (type, status) [source]" per line — every email from all sources |
 | Title | singleLineText | Apollo | Current job title |
 | Headline | singleLineText | Apollo | LinkedIn headline |
-| Photo URL | url | Apollo | LinkedIn profile photo |
+| Photo | multipleAttachments | Apollo | Profile photo (rendered as thumbnail from LinkedIn URL) |
 
 ### Location (from Apollo Enrich)
 | Field | Type | Source |
@@ -50,7 +50,7 @@ Table Name: `Candidate Leads`
 |-------|------|--------|-------|
 | Seniority | singleLineText | Apollo | "senior", "director", "vp", etc. |
 | Department | singleLineText | Apollo | e.g. "product_management, design, engineering" |
-| Employment History | multilineText | Apollo | JSON: [{company, title, start_date, end_date, current}] |
+| Employment History | multilineText | Apollo | Readable text: "Title @ Company (date–date)" per line |
 | Likely to Engage | singleLineText | Apollo | "true" or "false" |
 | Apollo ID | singleLineText | Apollo | For re-enrichment and dedup |
 
@@ -60,12 +60,12 @@ Table Name: `Candidate Leads`
 | Personal Email | email | EnrichLayer | Personal email for outreach (gmail, etc.) — preferred over work email |
 | Personal Website | url | EnrichLayer | Personal website/portfolio URL from LinkedIn Contact Info (extra.website) |
 | Summary | multilineText | EnrichLayer | LinkedIn summary/about section — key for outreach personalization and scoring |
-| Recommendations | multilineText | EnrichLayer | JSON: full recommendations array — testimonials from colleagues, strongest social proof |
-| Languages | singleLineText | EnrichLayer | Comma-separated languages, e.g. "English, Tamil" |
+| Recommendations | multilineText | EnrichLayer | Readable paragraphs — testimonials from colleagues |
+| Languages | singleLineText | EnrichLayer | Comma-separated, e.g. "English, Tamil" |
 | Skills | multilineText | EnrichLayer | Comma-separated skill list |
-| Education | multilineText | EnrichLayer | JSON: [{school, degree, field_of_study, start_date, end_date}] |
-| Certifications | multilineText | EnrichLayer | JSON: [{name, authority, url}] |
-| EnrichLayer Experiences | multilineText | EnrichLayer | JSON: full experiences array with job descriptions. Separate from Apollo's Employment History — EnrichLayer has descriptions but may be stale. Apollo's Employment History is untouched. |
+| Education | multilineText | EnrichLayer | Readable text: "Degree, School (year–year)" per line |
+| Certifications | multilineText | EnrichLayer | Readable text: "Name — Authority (year)" per line. Blank if none. |
+| EnrichLayer Experiences | multilineText | EnrichLayer | Readable text: "Title @ Company (year–year)" with indented descriptions. Separate from Apollo's Employment History. |
 | EnrichLayer ID | singleLineText | EnrichLayer | For future re-enrichment |
 
 ### Analysis & Scoring (future — Nia, Opus)

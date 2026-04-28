@@ -62,6 +62,52 @@ interface EnrichedCandidate {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Formatters — convert raw data to recruiter-readable text
+// ---------------------------------------------------------------------------
+
+/** Format a date string like "2023-01-01" to "Jan 2023" */
+function formatDate(date: string | null | undefined): string {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+/** Format employment history array to readable text */
+function formatEmploymentHistory(
+  history: EnrichedCandidate['employment_history'],
+): string | null {
+  if (!history?.length) return null;
+  return history
+    .map((eh) => {
+      const start = formatDate(eh.start_date);
+      const end = eh.current ? 'present' : formatDate(eh.end_date);
+      const dateRange = start || end ? ` (${start}–${end})` : '';
+      return `${eh.title ?? 'Unknown Role'} @ ${eh.company ?? 'Unknown'}${dateRange}`;
+    })
+    .join('\n');
+}
+
+/** Format All Emails to readable text */
+function formatAllEmails(
+  email: string | null | undefined,
+  emailStatus: string | null | undefined,
+  emailConfidence: number | null | undefined,
+  personalEmails: string[] | undefined,
+): string | null {
+  const lines: string[] = [];
+  if (email) {
+    const status = emailStatus ?? 'unknown';
+    const conf = emailConfidence != null ? `, ${Math.round(emailConfidence * 100)}% confidence` : '';
+    lines.push(`${email} (work, ${status}${conf}) [apollo]`);
+  }
+  for (const pe of personalEmails ?? []) {
+    lines.push(`${pe} (personal) [apollo]`);
+  }
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
 /** Map an enriched candidate object to Airtable field names */
 function mapCandidateToFields(
   candidate: EnrichedCandidate,
@@ -78,7 +124,7 @@ function mapCandidateToFields(
   if (candidate.linkedin_url) fields['LinkedIn URL'] = candidate.linkedin_url;
   if (candidate.github_url) fields['GitHub URL'] = candidate.github_url;
   if (candidate.twitter_url) fields['Twitter URL'] = candidate.twitter_url;
-  if (candidate.photo_url) fields['Photo URL'] = candidate.photo_url;
+  if (candidate.photo_url) fields['Photo'] = [{ url: candidate.photo_url }];
   if (candidate.city) fields['City'] = candidate.city;
   if (candidate.state) fields['State'] = candidate.state;
   if (candidate.country) fields['Country'] = candidate.country;
@@ -92,30 +138,19 @@ function mapCandidateToFields(
     fields['Department'] = candidate.departments.join(', ');
   }
 
-  // Build All Emails: structured list of every email with source and validation info
-  const allEmails: Array<{ email: string; source: string; type: string; status: string | null; confidence: number | null }> = [];
-  if (candidate.email) {
-    allEmails.push({
-      email: candidate.email,
-      source: 'apollo',
-      type: 'work',
-      status: candidate.email_status ?? null,
-      confidence: candidate.email_confidence ?? null,
-    });
-  }
-  for (const pe of candidate.personal_emails ?? []) {
-    allEmails.push({ email: pe, source: 'apollo', type: 'personal', status: null, confidence: null });
-  }
-  if (allEmails.length > 0) {
-    fields['All Emails'] = JSON.stringify(allEmails);
-  }
+  const allEmailsText = formatAllEmails(
+    candidate.email, candidate.email_status,
+    candidate.email_confidence, candidate.personal_emails,
+  );
+  if (allEmailsText) fields['All Emails'] = allEmailsText;
 
   if (candidate.is_likely_to_engage != null) {
     fields['Likely to Engage'] = String(candidate.is_likely_to_engage);
   }
-  if (candidate.employment_history?.length) {
-    fields['Employment History'] = JSON.stringify(candidate.employment_history);
-  }
+
+  const historyText = formatEmploymentHistory(candidate.employment_history);
+  if (historyText) fields['Employment History'] = historyText;
+
   if (candidate.company?.name) fields['Company'] = candidate.company.name;
   if (candidate.company?.domain) fields['Company Domain'] = candidate.company.domain;
   if (candidate.company?.industry) fields['Company Industry'] = candidate.company.industry;

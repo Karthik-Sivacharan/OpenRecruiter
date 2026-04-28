@@ -48,13 +48,19 @@ Once recruiter approves enrichment, run the full chain without stopping:
 4. For EACH enrichProfile result, call airtableUpdateCandidate with the record_id and EXACTLY these fields.
    Use ONLY data returned by enrichProfile. NEVER generate, infer, or embellish any values.
 
-   ALWAYS set (from the enrichProfile response):
-   - "Skills": join the skills array with ", ". If the skills array is empty, do NOT set this field.
-   - "Education": JSON.stringify the FULL education array — include ALL entries, never truncate or pick a subset.
-   - "Certifications": JSON.stringify the FULL certifications array — include ALL entries, even if just one.
-   - "EnrichLayer Experiences": JSON.stringify the FULL experiences array from enrichProfile. This is a SEPARATE field from Apollo's "Employment History" — do NOT overwrite Employment History. EnrichLayer has richer job descriptions but may have stale current-role data. Both are kept for the scoring step to reconcile.
-   - "Summary": the summary field as-is. This is the candidate's LinkedIn About section — critical for personalization.
-   - "Recommendations": JSON.stringify the FULL recommendations array. These are testimonials from colleagues.
+   ALWAYS set (from the enrichProfile response). Format as READABLE TEXT, not JSON:
+   - "Skills": join the skills array with ", ". If empty, do NOT set this field.
+   - "Education": format each entry as one line: "Degree, School (start_year–end_year)". Example:
+     "Master's degree in Industrial Design, RIT (2015–2018)\nBachelor's degree in Electronics, Apeejay (2006–2010)"
+     Include ALL entries. If empty, do NOT set.
+   - "Certifications": format each entry as one line: "Name — Authority (year)". Example:
+     "UI/UX Design for AI Products — Stanford Online (2025)\nUser Experience Design — General Assembly (2016)"
+     Include ALL entries. If empty, do NOT set this field (leave blank, never save "[]").
+   - "EnrichLayer Experiences": format each entry as readable text with descriptions. Example:
+     "Senior Product Designer @ New Relic (2023–present)\nSenior UX Designer @ Oracle (2022–2023)\n  Lead designer on Data management, integration and connectivity services."
+     Include descriptions indented with 2 spaces on the next line when present. Include ALL entries. Do NOT overwrite Employment History.
+   - "Summary": the summary field as-is. This is the candidate's LinkedIn About section.
+   - "Recommendations": format each recommendation as a readable paragraph separated by blank lines. Include the recommender's name if present. If empty, do NOT set.
    - "Languages": join the languages array with ", ". If empty, skip.
 
    SET only if the value is non-null/non-empty in the response:
@@ -62,7 +68,7 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - "Personal Website": set from extra.website if it exists. This is the candidate's portfolio/personal site from LinkedIn Contact Info.
    - "GitHub URL": construct as "https://github.com/{github_id}" ONLY if extra.github_profile_id exists in the response.
 
-   APPEND to "All Emails" — read the current value first (from airtableGetCandidates or the record), parse the JSON array, add any NEW emails from EnrichLayer with source "enrichlayer", and write back the merged array. Never duplicate an email that's already in the array.
+   APPEND to "All Emails" — read the current value first, then add new lines for any EnrichLayer emails not already listed. Format each new line as: "email (personal) [enrichlayer]" or "email (work, verified) [enrichlayer]". Never duplicate an email already in the field.
 
    DO NOT:
    - Generate or infer skills that are not in the API response skills array.
