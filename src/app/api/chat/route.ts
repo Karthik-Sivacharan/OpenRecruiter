@@ -13,6 +13,7 @@ import {
   airtableGetCandidates,
 } from '@/lib/tools/airtable';
 import { enrichProfile, enrichLookupPerson, enrichWorkEmail } from '@/lib/tools/enrichlayer';
+import { niaWebSearch } from '@/lib/tools/nia';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -74,12 +75,35 @@ Once recruiter approves enrichment, run the full chain without stopping:
 **Step 4 — Work email fallback:**
 5. If a candidate has NO email at all (no Apollo email AND no personal email from enrichProfile), call enrichWorkEmail with their linkedin_url.
 
-**Step 5 — Future steps:**
-6. (Future: Nia Tracer → code analysis → airtableUpdateCandidate, stage: "Analyzed")
-7. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
+**Step 5 — Web Presence Discovery (only for candidates missing links):**
+6. After enrichment, check which candidates are STILL missing a "Personal Website" or "GitHub URL".
+   For those candidates ONLY, use niaWebSearch to find their online presence. Do NOT search for candidates who already have these URLs.
 
-**Step 6 — Done:**
-8. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
+   How to construct search queries (based on the ROLE being hired for):
+   - For design roles: search "{full name}" "{company}" portfolio OR behance.net OR dribbble.com
+   - For engineering roles: search "{full name}" "{company}" github.com (use category: "github")
+   - For PM/other roles: search "{full name}" "{company}" blog OR portfolio OR medium.com
+
+   VERIFICATION — before saving any URL from search results, check ALL of these:
+   - Does the result snippet or title mention the candidate's FULL NAME?
+   - Does it mention ANY company from their employment history (current or past — check the Employment History field)?
+   - OR does the URL contain the candidate's name (e.g. kabeerdesign.com for Kabeer Andrabi)?
+   - OR does it mention their school from Education?
+
+   SAVE to Airtable (via airtableUpdateCandidate) ONLY if at least one verification signal matches.
+   If NO signals match, DO NOT save — it is likely a different person.
+   When uncertain, skip. Better to miss a portfolio than save the wrong person's.
+
+   Save verified URLs to:
+   - "Personal Website" for portfolio/personal sites (only if currently empty)
+   - "GitHub URL" for GitHub profiles (only if currently empty)
+
+**Step 6 — Future steps:**
+7. (Future: Nia Tracer → code analysis → airtableUpdateCandidate, stage: "Analyzed")
+8. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
+
+**Step 7 — Done:**
+9. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
 
 **Phase 4 — Send + Drip (requires approval):**
 Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
@@ -122,6 +146,9 @@ export async function POST(req: Request) {
       enrichProfile,
       enrichLookupPerson,
       enrichWorkEmail,
+
+      // Nia tools
+      niaWebSearch,
 
       // Airtable tools
       airtableCreateCandidates,

@@ -106,7 +106,7 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 |------|--------|---------------|-----------|
 | Apollo Enrich | CREATE row | Name, Email, Email Status, Email Confidence, Personal Email, All Emails, Department, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
 | EnrichLayer | UPDATE row | Personal Email (only if empty), Personal Website, Summary, Recommendations, Languages, All Emails (append), Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
-| PDL / GitHub | UPDATE row | GitHub URL | (stays Enriched) |
+| Nia Web Search | UPDATE row | Personal Website (if missing), GitHub URL (if missing) — only for candidates where enrichment didn't find these. Verified against candidate's name + employment history before saving. | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
 | Scoring | UPDATE row | Score, Score Rationale | Scored |
 | Email Draft | UPDATE row | Draft Email Subject, Draft Email Body | Draft Ready |
