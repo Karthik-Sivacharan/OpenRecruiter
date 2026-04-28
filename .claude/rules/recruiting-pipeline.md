@@ -112,23 +112,39 @@ Log to Graphiti at EVERY step:
 
 ## Airtable Schema (Per Candidate Row)
 
+### Hiring Context (from JD / recruiter intake)
+| Field | Type | Source |
+|-------|------|--------|
+| Role | Text | From intake (search role name) |
+| Hiring Company | Text | Company name from JD |
+| Hiring Role | Text | Exact role title from JD |
+| Hiring JD URL | URL | JD link (if recruiter shared one) |
+| Hiring Job Description | Long text | Full JD text (fetched, pasted, or from PDF) |
+| Pipeline Stage | Select | Auto-updated |
+
+### Candidate Profile (from Apollo + EnrichLayer)
 | Field | Type | Source |
 |-------|------|--------|
 | Name | Text | Apollo |
 | Email | Email | Apollo / EnrichLayer |
-| Title | Text | Apollo / EnrichLayer |
-| Company | Text | Apollo / EnrichLayer |
+| Title | Text | Apollo (candidate's current job title) |
+| Current Company | Text | Apollo (candidate's current employer) |
+| Current Company Domain | Text | Apollo |
+| Current Company Industry | Text | Apollo |
+| Current Company Size | Number | Apollo |
+| Current Company Funding | Text | Apollo |
+| Current Company Stage | Text | Apollo |
+| Current Company Tech Stack | Text | Apollo |
+| Current Company Description | Long text | Apollo |
 | LinkedIn URL | URL | Apollo |
 | GitHub URL | URL | PDL / GitHub search |
-| Portfolio URL | URL | PDL / Nia search |
+| Personal Website | URL | PDL / Nia search |
 | Nia Analysis | Long text | Nia Tracer |
 | Score | Number (1-10) | Opus 4.6 scoring |
 | Score Rationale | Long text | Opus 4.6 scoring |
 | Draft Email Subject | Text | Sonnet 4.6 |
 | Draft Email Body | Long text | Sonnet 4.6 |
 | AgentMail Thread ID | Text | AgentMail (after send) |
-| Pipeline Stage | Select | Auto-updated |
-| Role | Text | From intake |
 | Reply Content | Long text | AgentMail webhook |
 | Notes | Long text | Running log |
 

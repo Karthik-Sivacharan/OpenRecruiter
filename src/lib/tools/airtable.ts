@@ -108,10 +108,19 @@ function formatAllEmails(
   return lines.length > 0 ? lines.join('\n') : null;
 }
 
+/** Hiring context passed alongside candidates */
+interface HiringContext {
+  role: string;
+  hiring_company?: string | null;
+  hiring_role?: string | null;
+  hiring_jd_url?: string | null;
+  hiring_job_description?: string | null;
+}
+
 /** Map an enriched candidate object to Airtable field names */
 function mapCandidateToFields(
   candidate: EnrichedCandidate,
-  role: string,
+  hiring: HiringContext,
 ): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
 
@@ -151,19 +160,25 @@ function mapCandidateToFields(
   const historyText = formatEmploymentHistory(candidate.employment_history);
   if (historyText) fields['Employment History'] = historyText;
 
-  if (candidate.company?.name) fields['Company'] = candidate.company.name;
-  if (candidate.company?.domain) fields['Company Domain'] = candidate.company.domain;
-  if (candidate.company?.industry) fields['Company Industry'] = candidate.company.industry;
-  if (candidate.company?.size != null) fields['Company Size'] = candidate.company.size;
-  if (candidate.company?.funding) fields['Company Funding'] = candidate.company.funding;
-  if (candidate.company?.stage) fields['Company Stage'] = candidate.company.stage;
+  // Candidate's current employer (from Apollo)
+  if (candidate.company?.name) fields['Current Company'] = candidate.company.name;
+  if (candidate.company?.domain) fields['Current Company Domain'] = candidate.company.domain;
+  if (candidate.company?.industry) fields['Current Company Industry'] = candidate.company.industry;
+  if (candidate.company?.size != null) fields['Current Company Size'] = candidate.company.size;
+  if (candidate.company?.funding) fields['Current Company Funding'] = candidate.company.funding;
+  if (candidate.company?.stage) fields['Current Company Stage'] = candidate.company.stage;
   if (candidate.company?.tech_stack?.length) {
-    fields['Company Tech Stack'] = candidate.company.tech_stack.join(', ');
+    fields['Current Company Tech Stack'] = candidate.company.tech_stack.join(', ');
   }
-  if (candidate.company?.description) fields['Company Description'] = candidate.company.description;
+  if (candidate.company?.description) fields['Current Company Description'] = candidate.company.description;
   if (candidate.apollo_id) fields['Apollo ID'] = candidate.apollo_id;
 
-  fields['Role'] = role;
+  // Hiring context (from JD / recruiter intake)
+  fields['Role'] = hiring.role;
+  if (hiring.hiring_company) fields['Hiring Company'] = hiring.hiring_company;
+  if (hiring.hiring_role) fields['Hiring Role'] = hiring.hiring_role;
+  if (hiring.hiring_jd_url) fields['Hiring JD URL'] = hiring.hiring_jd_url;
+  if (hiring.hiring_job_description) fields['Hiring Job Description'] = hiring.hiring_job_description;
   fields['Pipeline Stage'] = 'Enriched';
 
   return fields;
@@ -226,21 +241,26 @@ export const airtableCreateCandidates = tool({
         }),
       )
       .describe('Array of enriched candidate objects from apolloBulkEnrich output'),
-    role: z.string().describe('The role these candidates were sourced for'),
+    role: z.string().describe('The role these candidates were sourced for (e.g. "Senior ML Engineer")'),
+    hiring_company: z.string().nullish().describe('The company hiring for this role (from the JD)'),
+    hiring_role: z.string().nullish().describe('The exact role title from the JD'),
+    hiring_jd_url: z.string().nullish().describe('URL of the job description (if recruiter shared a link)'),
+    hiring_job_description: z.string().nullish().describe('Full job description text (from URL fetch, paste, or PDF)'),
   }),
-  execute: async ({ candidates, role }) => {
+  execute: async ({ candidates, role, hiring_company, hiring_role, hiring_jd_url, hiring_job_description }) => {
+    const hiring: HiringContext = { role, hiring_company, hiring_role, hiring_jd_url, hiring_job_description };
     const createdIds: string[] = [];
     const errors: string[] = [];
 
     // Airtable batch create supports max 10 records per request
     for (let i = 0; i < candidates.length; i += 10) {
       const batch = candidates.slice(i, i + 10);
-      const records = batch.map((c) => ({ fields: mapCandidateToFields(c, role) }));
+      const records = batch.map((c) => ({ fields: mapCandidateToFields(c, hiring) }));
 
       const response = await fetch(airtableUrl(), {
         method: 'POST',
         headers: airtableHeaders(),
-        body: JSON.stringify({ records }),
+        body: JSON.stringify({ typecast: true, records }),
       });
 
       if (!response.ok) {
@@ -282,6 +302,7 @@ export const airtableUpdateCandidate = tool({
       method: 'PATCH',
       headers: airtableHeaders(),
       body: JSON.stringify({
+        typecast: true,
         records: [{ id: record_id, fields }],
       }),
     });

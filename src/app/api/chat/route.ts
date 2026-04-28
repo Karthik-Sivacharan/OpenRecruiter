@@ -44,7 +44,13 @@ Once recruiter approves enrichment, run the full chain without stopping:
 **Step 1 — Apollo Enrich:**
 1. apolloBulkEnrich (batches of 10) → get emails, personal emails, employment history, company details, departments.
    Apollo now returns personal_emails (gmail, etc.) and departments/functions automatically.
-2. Immediately push ALL enriched candidates to Airtable using airtableCreateCandidates. Set Pipeline Stage to "Enriched" and include the Role name.
+2. Immediately push ALL enriched candidates to Airtable using airtableCreateCandidates. Set Pipeline Stage to "Enriched".
+   ALWAYS pass these hiring context fields from the JD/intake:
+   - role: the search role name (e.g. "Senior ML Engineer")
+   - hiring_company: the company hiring (from the JD, e.g. "Stripe")
+   - hiring_role: the exact role title from the JD
+   - hiring_jd_url: the JD URL (if the recruiter shared one)
+   - hiring_job_description: the full JD text (from web_fetch, paste, or PDF — preserve it so recruiters can reference it later)
    The tool automatically saves: Personal Email (first personal email), Department, Email Confidence, and All Emails (structured JSON with source + validation info for every email found).
 
 **Step 2 — EnrichLayer Deep Enrich:**
