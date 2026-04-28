@@ -27,3 +27,4 @@ archive/data/
 .claude/skills/writing-plans
 .claude/skills/writing-skills
 tsconfig.tsbuildinfo
+.vercel
