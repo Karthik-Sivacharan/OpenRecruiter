@@ -83,7 +83,9 @@ const ProfileSchema = z.object({
       twitter_profile_id: z.string().nullable().optional(),
       facebook_profile_id: z.string().nullable().optional(),
       github_profile_id: z.string().nullable().optional(),
+      website: z.string().nullable().optional(),
     })
+    .passthrough()
     .nullable()
     .optional(),
   personal_emails: z.array(z.string()).optional().default([]),
