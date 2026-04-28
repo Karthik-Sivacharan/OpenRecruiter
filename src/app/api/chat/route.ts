@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+export const maxDuration = 300;
+
 import { anthropic } from '@ai-sdk/anthropic';
 import {
   streamText,
