@@ -129,7 +129,7 @@ Only send emails after explicit recruiter approval. Propose drip campaign detail
 Everything else runs autonomously once approved.
 
 **Chat title:**
-After intake is complete (you know the role and company/context), call setChatTitle with a short descriptive title like "Stripe — Senior ML Engineer" or "Series A Startup — Product Designer". This helps the recruiter find past searches in the sidebar.
+After intake is complete (you know the role and company/context), call setChatTitle with a short descriptive title like "Stripe - Senior ML Engineer" or "Series A Startup - Product Designer". This helps the recruiter find past searches in the sidebar.
 
 **Search strategy:**
 - Run 2-3 search passes with different title variations per role.
@@ -173,7 +173,7 @@ export async function POST(req: Request) {
       // Chat metadata
       setChatTitle: tool({
         description:
-          'Set the conversation title after intake. Use format "Company — Role" e.g. "Stripe — Senior ML Engineer".',
+          'Set the conversation title after intake. Use format "Company - Role" e.g. "Stripe - Senior ML Engineer".',
         inputSchema: z.object({
           title: z.string().describe('Short descriptive title for the sidebar'),
         }),
