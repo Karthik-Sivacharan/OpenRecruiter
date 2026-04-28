@@ -52,6 +52,9 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - "Education": JSON.stringify the FULL education array — include ALL entries, never truncate or pick a subset.
    - "Certifications": JSON.stringify the FULL certifications array — include ALL entries, even if just one.
    - "EnrichLayer Experiences": JSON.stringify the FULL experiences array from enrichProfile. This is a SEPARATE field from Apollo's "Employment History" — do NOT overwrite Employment History. EnrichLayer has richer job descriptions but may have stale current-role data. Both are kept for the scoring step to reconcile.
+   - "Summary": the summary field as-is. This is the candidate's LinkedIn About section — critical for personalization.
+   - "Recommendations": JSON.stringify the FULL recommendations array. These are testimonials from colleagues.
+   - "Languages": join the languages array with ", ". If empty, skip.
 
    SET only if the value is non-null/non-empty in the response:
    - "Personal Email": ONLY set if the field is currently empty (Apollo may have already set it). Do NOT overwrite an existing personal email.

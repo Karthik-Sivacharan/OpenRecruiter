@@ -75,6 +75,7 @@ const ProfileSchema = z.object({
     authority: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   })).optional().default([]),
+  recommendations: z.array(z.string()).optional().default([]),
   languages: z.array(z.string()).optional().default([]),
   connections: z.number().nullable().optional(),
   extra: z
