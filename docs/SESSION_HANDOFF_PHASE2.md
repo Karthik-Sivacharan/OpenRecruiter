@@ -72,14 +72,25 @@
 - ENRICHLAYER_API_KEY
 - NIA_API_KEY
 
-## What's Next (Phase 3)
+## What's Next
 
-### Remaining pipeline steps (in order):
+### Phase 3: Chat Persistence + Deployment
+Make the app production-ready with saved conversations and public access.
+See `docs/CHAT_PERSISTENCE_RESEARCH.md` for full architecture.
+1. Neon Postgres + Drizzle schema for conversations
+2. Chat save/load/continue (useChat with initialMessages)
+3. Sidebar UI for conversation history
+4. Per-role Airtable tables (created dynamically per intake)
+5. Deploy to Vercel with env vars
+
+### Phase 4: Scoring + Outreach
 1. **Scoring** — Opus 4.6 scores each candidate 1-10 with rationale based on all enriched data
 2. **Email Drafting** — Sonnet writes personalized outreach using summary, recommendations, role context
 3. **Send** — AgentMail integration, update stage to "Contacted"
-4. **Drip Campaign** — Vercel Cron for Day 3/7/14 follow-ups
-5. **Auto-Reply** — AgentMail webhook → contextual reply from Airtable row
+
+### Phase 5: Follow-up + Auto-Reply
+1. **Drip Campaign** — Vercel Cron for Day 3/7/14 follow-ups
+2. **Auto-Reply** — AgentMail webhook → contextual reply from Airtable row
 
 ### Research done but not implemented:
 - LinkdAPI ($0.005/profile) — LinkedIn Contact Info websites + Featured section
