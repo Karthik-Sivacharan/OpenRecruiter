@@ -11,7 +11,10 @@ Table Name: `Candidate Leads`
 |-------|------|--------|-------|
 | Name | singleLineText | Apollo | Full name (pre-existing field) |
 | Email | email | Apollo | Work email |
-| Email Status | singleLineText | Apollo | "verified", "guessed", etc. |
+| Email Status | singleLineText | Apollo | "verified", "extrapolated", "guessed" |
+| Email Confidence | singleLineText | Apollo | 0-1 confidence score (only when status is "extrapolated") |
+| Personal Email | email | Apollo / EnrichLayer | Best personal email (gmail, etc.) — preferred for outreach |
+| All Emails | multilineText | Apollo + EnrichLayer | JSON: [{email, source, type, status, confidence}] — every email from all sources |
 | Title | singleLineText | Apollo | Current job title |
 | Headline | singleLineText | Apollo | LinkedIn headline |
 | Photo URL | url | Apollo | LinkedIn profile photo |
@@ -46,6 +49,7 @@ Table Name: `Candidate Leads`
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
 | Seniority | singleLineText | Apollo | "senior", "director", "vp", etc. |
+| Department | singleLineText | Apollo | e.g. "product_management, design, engineering" |
 | Employment History | multilineText | Apollo | JSON: [{company, title, start_date, end_date, current}] |
 | Likely to Engage | singleLineText | Apollo | "true" or "false" |
 | Apollo ID | singleLineText | Apollo | For re-enrichment and dedup |
@@ -96,8 +100,8 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 
 | Step | Action | Fields Updated | Stage Set |
 |------|--------|---------------|-----------|
-| Apollo Enrich | CREATE row | Name, Email, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
-| EnrichLayer | UPDATE row | Personal Email, Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
+| Apollo Enrich | CREATE row | Name, Email, Email Status, Email Confidence, Personal Email, All Emails, Department, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
+| EnrichLayer | UPDATE row | Personal Email (only if empty), All Emails (append), Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
 | PDL / GitHub | UPDATE row | GitHub URL | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
 | Scoring | UPDATE row | Score, Score Rationale | Scored |

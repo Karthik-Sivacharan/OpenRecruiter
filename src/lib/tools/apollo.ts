@@ -39,15 +39,19 @@ interface ApolloEnrichedPerson {
   headline?: string;
   email?: string;
   email_status?: string;
+  extrapolated_email_confidence?: number;
+  personal_emails?: string[];
   city?: string;
   state?: string;
   country?: string;
   linkedin_url?: string;
   github_url?: string;
   twitter_url?: string;
+  facebook_url?: string;
   photo_url?: string;
   seniority?: string;
   departments?: string[];
+  functions?: string[];
   is_likely_to_engage?: boolean;
   employment_history?: Array<{
     organization_name?: string;
@@ -163,6 +167,7 @@ export const apolloBulkEnrich = tool({
       headers: apolloHeaders(),
       body: JSON.stringify({
         details: apollo_ids.map((id) => ({ id })),
+        reveal_personal_emails: true,
       }),
     });
 
@@ -183,12 +188,17 @@ export const apolloBulkEnrich = tool({
           name: p.name ?? [p.first_name, p.last_name].filter(Boolean).join(' '),
           email: p.email ?? null,
           email_status: p.email_status ?? null,
+          email_confidence: p.extrapolated_email_confidence ?? null,
+          personal_emails: p.personal_emails ?? [],
           title: p.title ?? null,
           headline: p.headline ?? null,
           seniority: p.seniority ?? null,
+          departments: p.departments ?? [],
+          functions: p.functions ?? [],
           linkedin_url: p.linkedin_url ?? null,
           github_url: p.github_url ?? null,
           twitter_url: p.twitter_url ?? null,
+          facebook_url: p.facebook_url ?? null,
           photo_url: p.photo_url ?? null,
           city: p.city ?? null,
           state: p.state ?? null,

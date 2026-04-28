@@ -27,12 +27,17 @@ interface EnrichedCandidate {
   name?: string | null;
   email?: string | null;
   email_status?: string | null;
+  email_confidence?: number | null;
+  personal_emails?: string[];
   title?: string | null;
   headline?: string | null;
   seniority?: string | null;
+  departments?: string[];
+  functions?: string[];
   linkedin_url?: string | null;
   github_url?: string | null;
   twitter_url?: string | null;
+  facebook_url?: string | null;
   photo_url?: string | null;
   city?: string | null;
   state?: string | null;
@@ -77,6 +82,34 @@ function mapCandidateToFields(
   if (candidate.city) fields['City'] = candidate.city;
   if (candidate.state) fields['State'] = candidate.state;
   if (candidate.country) fields['Country'] = candidate.country;
+  if (candidate.email_confidence != null) {
+    fields['Email Confidence'] = String(candidate.email_confidence);
+  }
+  if (candidate.personal_emails?.length) {
+    fields['Personal Email'] = candidate.personal_emails[0];
+  }
+  if (candidate.departments?.length) {
+    fields['Department'] = candidate.departments.join(', ');
+  }
+
+  // Build All Emails: structured list of every email with source and validation info
+  const allEmails: Array<{ email: string; source: string; type: string; status: string | null; confidence: number | null }> = [];
+  if (candidate.email) {
+    allEmails.push({
+      email: candidate.email,
+      source: 'apollo',
+      type: 'work',
+      status: candidate.email_status ?? null,
+      confidence: candidate.email_confidence ?? null,
+    });
+  }
+  for (const pe of candidate.personal_emails ?? []) {
+    allEmails.push({ email: pe, source: 'apollo', type: 'personal', status: null, confidence: null });
+  }
+  if (allEmails.length > 0) {
+    fields['All Emails'] = JSON.stringify(allEmails);
+  }
+
   if (candidate.is_likely_to_engage != null) {
     fields['Likely to Engage'] = String(candidate.is_likely_to_engage);
   }
@@ -116,12 +149,17 @@ export const airtableCreateCandidates = tool({
           name: z.string().nullish(),
           email: z.string().nullish(),
           email_status: z.string().nullish(),
+          email_confidence: z.number().nullish(),
+          personal_emails: z.array(z.string()).optional(),
           title: z.string().nullish(),
           headline: z.string().nullish(),
           seniority: z.string().nullish(),
+          departments: z.array(z.string()).optional(),
+          functions: z.array(z.string()).optional(),
           linkedin_url: z.string().nullish(),
           github_url: z.string().nullish(),
           twitter_url: z.string().nullish(),
+          facebook_url: z.string().nullish(),
           photo_url: z.string().nullish(),
           city: z.string().nullish(),
           state: z.string().nullish(),
