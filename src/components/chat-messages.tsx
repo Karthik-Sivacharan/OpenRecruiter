@@ -42,8 +42,8 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   return (
     <>
-      {messages.map((message) => (
-        <Message key={message.id} from={message.role}>
+      {messages.map((message, idx) => (
+        <Message key={message.id || `msg-${idx}`} from={message.role}>
           <MessageContent>
             {message.parts.map((part, i) => {
               switch (part.type) {
