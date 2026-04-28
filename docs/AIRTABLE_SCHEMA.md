@@ -58,6 +58,7 @@ Table Name: `Candidate Leads`
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
 | Personal Email | email | EnrichLayer | Personal email for outreach (gmail, etc.) — preferred over work email |
+| Personal Website | url | EnrichLayer | Personal website/portfolio URL from LinkedIn Contact Info (extra.website) |
 | Skills | multilineText | EnrichLayer | Comma-separated skill list |
 | Education | multilineText | EnrichLayer | JSON: [{school, degree, field_of_study, start_date, end_date}] |
 | Certifications | multilineText | EnrichLayer | JSON: [{name, authority, url}] |
@@ -101,7 +102,7 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 | Step | Action | Fields Updated | Stage Set |
 |------|--------|---------------|-----------|
 | Apollo Enrich | CREATE row | Name, Email, Email Status, Email Confidence, Personal Email, All Emails, Department, Title, Company, Location, LinkedIn, Seniority, Employment History, all Company fields | Enriched |
-| EnrichLayer | UPDATE row | Personal Email (only if empty), All Emails (append), Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
+| EnrichLayer | UPDATE row | Personal Email (only if empty), Personal Website, All Emails (append), Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
 | PDL / GitHub | UPDATE row | GitHub URL | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
 | Scoring | UPDATE row | Score, Score Rationale | Scored |

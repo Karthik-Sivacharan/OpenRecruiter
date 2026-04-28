@@ -55,6 +55,7 @@ Once recruiter approves enrichment, run the full chain without stopping:
 
    SET only if the value is non-null/non-empty in the response:
    - "Personal Email": ONLY set if the field is currently empty (Apollo may have already set it). Do NOT overwrite an existing personal email.
+   - "Personal Website": set from extra.website if it exists. This is the candidate's portfolio/personal site from LinkedIn Contact Info.
    - "GitHub URL": construct as "https://github.com/{github_id}" ONLY if extra.github_profile_id exists in the response.
 
    APPEND to "All Emails" — read the current value first (from airtableGetCandidates or the record), parse the JSON array, add any NEW emails from EnrichLayer with source "enrichlayer", and write back the merged array. Never duplicate an email that's already in the array.
