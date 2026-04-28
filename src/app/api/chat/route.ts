@@ -5,6 +5,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import {
   streamText,
   convertToModelMessages,
+  pruneMessages,
   stepCountIs,
   type UIMessage,
 } from 'ai';
@@ -143,12 +144,41 @@ After intake is complete (you know the role and company/context), call setChatTi
 export async function POST(req: Request) {
   const { chatId, messages }: { chatId?: string; messages: UIMessage[] } = await req.json();
 
+  // Layer 1: Local pruning (free) — strip old tool calls + reasoning before sending
+  const modelMessages = await convertToModelMessages(messages);
+  const prunedMessages = pruneMessages({
+    messages: modelMessages,
+    reasoning: 'before-last-message',
+    toolCalls: 'before-last-2-messages',
+    emptyMessages: 'remove',
+  });
+
   const result = streamText({
     model: anthropic(
       process.env.MODEL_ORCHESTRATOR || 'claude-sonnet-4-6',
     ),
     system: SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages),
+    messages: prunedMessages,
+
+    // Layer 2: Server-side tool-result clearing (free) — Anthropic clears old tool
+    // results when context exceeds threshold. Data is already in Airtable by then.
+    providerOptions: {
+      anthropic: {
+        contextManagement: {
+          edits: [
+            {
+              type: 'clear_tool_uses_20250919',
+              trigger: { type: 'input_tokens', value: 80000 },
+              keep: { type: 'tool_uses', value: 5 },
+              clearAtLeast: { type: 'input_tokens', value: 10000 },
+              clearToolInputs: true,
+              excludeTools: ['web_fetch', 'setChatTitle'],
+            },
+          ],
+        },
+      },
+    },
+
     tools: {
       // Anthropic server tool — fetches URL content server-side
       web_fetch: anthropic.tools.webFetch_20250910({ maxUses: 3 }),
