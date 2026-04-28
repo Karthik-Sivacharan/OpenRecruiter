@@ -84,11 +84,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       isActive={chat.id === activeChatId}
                       onClick={() => router.push(`/chat/${chat.id}`)}
-                      tooltip={chat.title || "Untitled"}
+                      tooltip={chat.roleName || chat.title || "Untitled"}
                     >
                       <MessageSquare className="size-4" />
                       <span className="flex-1 truncate">
-                        {chat.title || "Untitled"}
+                        {chat.roleName || chat.title || "Untitled"}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {formatRelativeTime(chat.updatedAt)}

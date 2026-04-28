@@ -9,7 +9,9 @@ import {
   type UIMessage,
 } from 'ai';
 
-import { saveChat } from '@/lib/db/queries';
+import { tool } from 'ai';
+import { z } from 'zod';
+import { saveChat, updateChatMeta } from '@/lib/db/queries';
 import { apolloSearchPeople, apolloBulkEnrich } from '@/lib/tools/apollo';
 import {
   airtableCreateCandidates,
@@ -126,6 +128,9 @@ Only send emails after explicit recruiter approval. Propose drip campaign detail
 - Drip campaign scheduling: "Set up Day 3/7/14 follow-ups?"
 Everything else runs autonomously once approved.
 
+**Chat title:**
+After intake is complete (you know the role and company/context), call setChatTitle with a short descriptive title like "Stripe — Senior ML Engineer" or "Series A Startup — Product Designer". This helps the recruiter find past searches in the sidebar.
+
 **Search strategy:**
 - Run 2-3 search passes with different title variations per role.
 - Use person_titles, person_locations, person_seniorities as primary filters.
@@ -164,6 +169,21 @@ export async function POST(req: Request) {
       airtableCreateCandidates,
       airtableUpdateCandidate,
       airtableGetCandidates,
+
+      // Chat metadata
+      setChatTitle: tool({
+        description:
+          'Set the conversation title after intake. Use format "Company — Role" e.g. "Stripe — Senior ML Engineer".',
+        inputSchema: z.object({
+          title: z.string().describe('Short descriptive title for the sidebar'),
+        }),
+        execute: async ({ title }) => {
+          if (chatId) {
+            await updateChatMeta(chatId, { roleName: title });
+          }
+          return { ok: true, title };
+        },
+      }),
     },
     stopWhen: stepCountIs(15),
   });
