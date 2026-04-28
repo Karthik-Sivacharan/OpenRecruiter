@@ -9,6 +9,7 @@ import {
   type UIMessage,
 } from 'ai';
 
+import { saveChat } from '@/lib/db/queries';
 import { apolloSearchPeople, apolloBulkEnrich } from '@/lib/tools/apollo';
 import {
   airtableCreateCandidates,
@@ -135,7 +136,7 @@ Everything else runs autonomously once approved.
 - Once approved, enrich and push to Airtable at each step so no data is lost.`;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { chatId, messages }: { chatId?: string; messages: UIMessage[] } = await req.json();
 
   const result = streamText({
     model: anthropic(
@@ -167,5 +168,17 @@ export async function POST(req: Request) {
     stopWhen: stepCountIs(15),
   });
 
-  return result.toUIMessageStreamResponse();
+  // Ensure onFinish fires even if the client disconnects mid-stream
+  result.consumeStream();
+
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    onFinish: ({ messages: finalMessages }) => {
+      if (chatId) {
+        saveChat(chatId, finalMessages).catch((err) =>
+          console.error('Failed to save chat:', err),
+        );
+      }
+    },
+  });
 }
