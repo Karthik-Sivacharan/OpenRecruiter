@@ -28,3 +28,4 @@ archive/data/
 .claude/skills/writing-skills
 tsconfig.tsbuildinfo
 .vercel
+.env*.local
