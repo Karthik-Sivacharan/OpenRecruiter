@@ -24,6 +24,7 @@ import { niaWebSearch } from '@/lib/tools/nia';
 // import { niaAnalyzeCandidates } from '@/lib/tools/nia';
 import { scoreCandidates } from '@/lib/tools/scoring';
 import { fetchJobDescription } from '@/lib/tools/jd-fetch';
+import { agentmailCreateDrafts, agentmailSendDrafts } from '@/lib/tools/agentmail';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -140,8 +141,31 @@ Once recruiter approves enrichment, run the full chain without stopping:
     Name | Title | Company | Fit Score | Key takeaway from rationale
 10. Tell recruiter: "All candidates scored. Check Airtable for full details. Want to draft outreach emails for the top candidates?"
 
-**Phase 4 — Send + Drip (requires approval):**
-Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
+**Phase 4 — Outreach Drafting (after scoring):**
+After scoring completes and you've shown the results table:
+
+1. ASK the recruiter before drafting: "Before I draft emails, a few questions:
+   - Any links you want included (calendly, job page, etc.)?
+   - Comp range to mention?
+   - Any specific talking points or things to highlight?"
+2. WAIT for their response.
+3. Draft personalized emails ONLY for candidates with fit_score >= 6.
+4. Follow the outreach-style skill strictly. Key rules:
+   - 50-100 words max, NEVER over 125
+   - NO em dashes, NO "I hope this finds you well", NO "exciting opportunity"
+   - Interest-based CTA: "Interested?" or "Worth a look?" (NOT "Open to a chat?")
+   - Lowercase subject lines, reference specific candidate work
+   - Include comp range if recruiter provided it
+   - Each email must feel unique, not stamped from a template
+5. Present all draft emails in chat for recruiter to review.
+6. After recruiter approves, call agentmailCreateDrafts with all approved candidates.
+   This creates drafts in AgentMail AND updates Airtable (Draft Email Subject, Body, Draft ID, stage "Draft Ready").
+   Use role_slug format like "swe-senior-stripe" or "ml-eng-eragon".
+7. Tell recruiter: "Drafts created. Review in Airtable. Say 'send all' or pick specific candidates to send."
+
+**Phase 4B — Sending (requires explicit approval):**
+Only send after recruiter says "send all" or picks specific candidates.
+Call agentmailSendDrafts with the draft IDs. This sends via AgentMail AND updates Airtable (Thread ID, Message ID, Sent At, stage "Contacted").
 
 **Phase 5 — Auto-Reply (runs automatically via webhook).**
 
@@ -216,6 +240,10 @@ export async function POST(req: Request) {
 
       // Scoring
       scoreCandidates,
+
+      // Outreach (AgentMail)
+      agentmailCreateDrafts,
+      agentmailSendDrafts,
 
       // Airtable tools
       airtableCreateCandidates,

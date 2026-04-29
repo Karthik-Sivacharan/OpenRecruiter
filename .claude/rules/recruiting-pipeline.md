@@ -163,7 +163,10 @@ Log to Graphiti at EVERY step:
 | Fit Rationale | Long text | Opus 4.6 scoring via scoreCandidate tool |
 | Draft Email Subject | Text | Sonnet 4.6 |
 | Draft Email Body | Long text | Sonnet 4.6 |
+| AgentMail Draft ID | Text | AgentMail (at draft creation) |
 | AgentMail Thread ID | Text | AgentMail (after send) |
+| AgentMail Message ID | Text | AgentMail (after send) |
+| Sent At | Text | AgentMail (ISO timestamp after send) |
 | Reply Content | Long text | AgentMail webhook |
 | Notes | Long text | Running log |
 

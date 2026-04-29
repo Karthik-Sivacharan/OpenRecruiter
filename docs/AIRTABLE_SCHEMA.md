@@ -68,20 +68,23 @@ Table Name: `Candidate Leads`
 | EnrichLayer Experiences | multilineText | EnrichLayer | Readable text: "Title @ Company (year–year)" with indented descriptions. Separate from Apollo's Employment History. |
 | EnrichLayer ID | singleLineText | EnrichLayer | For future re-enrichment |
 
-### Analysis & Scoring (future — Nia, Opus)
+### Analysis & Scoring (Nia, Opus)
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
 | Nia Analysis | multilineText | Nia Tracer | GitHub/portfolio analysis summary |
-| Score | number | Claude Opus | 1-10 |
-| Score Rationale | multilineText | Claude Opus | Why this score |
+| Fit Score | number | Claude Opus 4.6 | 1-10 fit score |
+| Fit Rationale | multilineText | Claude Opus 4.6 | 3-5 sentence assessment |
 
-### Outreach (future — Sonnet, AgentMail)
-| Field | Type | Source |
-|-------|------|--------|
-| Draft Email Subject | singleLineText | Sonnet 4.6 |
-| Draft Email Body | multilineText | Sonnet 4.6 |
-| AgentMail Thread ID | singleLineText | AgentMail |
-| Reply Content | multilineText | AgentMail webhook |
+### Outreach (Sonnet, AgentMail)
+| Field | Type | Source | Notes |
+|-------|------|--------|-------|
+| Draft Email Subject | singleLineText | Sonnet 4.6 | Lowercase, under 50 chars |
+| Draft Email Body | multilineText | Sonnet 4.6 | 50-100 words, personalized |
+| AgentMail Draft ID | singleLineText | AgentMail | Links to draft for sending |
+| AgentMail Thread ID | singleLineText | AgentMail | Set after draft is sent |
+| AgentMail Message ID | singleLineText | AgentMail | Set after draft is sent |
+| Sent At | singleLineText | AgentMail | ISO timestamp when outreach was sent |
+| Reply Content | multilineText | AgentMail webhook | Candidate's reply text |
 
 ### Pipeline
 | Field | Type | Values |
@@ -108,7 +111,7 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 | EnrichLayer | UPDATE row | Personal Email (only if empty), Personal Website, Summary, Recommendations, Languages, All Emails (append), Skills, Education, Certifications, EnrichLayer Experiences, EnrichLayer ID | (stays Enriched) |
 | Nia Web Search | UPDATE row | Personal Website (if missing), GitHub URL (if missing) — only for candidates where enrichment didn't find these. Verified against candidate's name + employment history before saving. | (stays Enriched) |
 | Nia Tracer | UPDATE row | Nia Analysis | Analyzed |
-| Scoring | UPDATE row | Score, Score Rationale | Scored |
-| Email Draft | UPDATE row | Draft Email Subject, Draft Email Body | Draft Ready |
-| Email Sent | UPDATE row | AgentMail Thread ID | Contacted |
+| Scoring | UPDATE row | Fit Score, Fit Rationale | Scored |
+| Email Draft | UPDATE row | Draft Email Subject, Draft Email Body, AgentMail Draft ID | Draft Ready |
+| Email Sent | UPDATE row | AgentMail Thread ID, AgentMail Message ID, Sent At | Contacted |
 | Reply Received | UPDATE row | Reply Content | Replied |

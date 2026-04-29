@@ -256,6 +256,7 @@ export const scoreCandidates = tool({
       scored,
       failed,
       results: sorted.map((r) => ({
+        record_id: r.record_id,
         name: r.candidate_name,
         fit_score: r.fit_score,
         fit_rationale: r.fit_rationale,

@@ -294,7 +294,7 @@ export const airtableUpdateCandidate = tool({
     fields: z
       .record(z.string(), z.unknown())
       .describe(
-        'Partial field map to update. Use exact Airtable field names like "Score", "Pipeline Stage", "Nia Analysis", etc.',
+        'Partial field map to update. Use exact Airtable field names like "Fit Score", "Pipeline Stage", "Draft Email Subject", etc.',
       ),
   }),
   execute: async ({ record_id, fields }) => {
