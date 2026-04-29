@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
@@ -37,6 +39,10 @@ interface ChatProps {
 }
 
 export function Chat({ id, initialMessages }: ChatProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const hasRedirected = useRef(false);
+
   const transport = new DefaultChatTransport({
     api: "/api/chat",
     prepareSendMessagesRequest: ({ id, messages }) => ({
@@ -61,6 +67,20 @@ export function Chat({ id, initialMessages }: ChatProps) {
       lastAssistantMessageIsCompleteWithToolCalls({ messages: msgs }) ||
       lastAssistantMessageIsCompleteWithApprovalResponses({ messages: msgs }),
   });
+
+  // Redirect from / to /chat/{id} after first message so the sidebar refetches
+  useEffect(() => {
+    if (
+      pathname === "/" &&
+      messages.length > 0 &&
+      status !== "streaming" &&
+      status !== "submitted" &&
+      !hasRedirected.current
+    ) {
+      hasRedirected.current = true;
+      router.replace(`/chat/${id}`);
+    }
+  }, [pathname, messages.length, status, id, router]);
 
   const isEmpty = messages.length === 0;
 

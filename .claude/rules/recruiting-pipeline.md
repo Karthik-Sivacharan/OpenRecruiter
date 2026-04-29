@@ -38,14 +38,21 @@ Once recruiter approves enrichment, run the full chain without stopping. Push to
 12. `githubFetchProfile` -> websiteUrl, bio, README
 13. **Update Airtable rows** with GitHub/portfolio URLs
 
-**Step 4 — Analysis + Scoring (future):**
-14. `niaTracer` on GitHub repos -> deep code analysis
-15. `niaTracer` on portfolio/blog sites -> portfolio analysis
-16. **Update Airtable rows** with Nia analysis. Stage: "Analyzed"
-17. Score each candidate using `.claude/skills/scoring-rubric/` (internally calls Opus 4.6)
-18. Generate personalized email draft using `.claude/skills/outreach-style/`
-19. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
-20. **Update Airtable rows** with score, rationale, draft email. Stage: "Scored"
+**Step 4 — Deep Analysis via Nia Oracle (requires approval):**
+14. After enrichment + web discovery, **ASK the recruiter**: "Enrichment complete for X candidates. Want me to run deep analysis? Or skip straight to outreach?"
+15. **WAIT for recruiter response.** They can say: analyze all, analyze specific ones, or skip.
+16. If approved: `niaAnalyzeCandidates` (batch) -> fires Oracle research jobs in parallel (~5 min total)
+    - Oracle autonomously researches each candidate's portfolio, LinkedIn, GitHub, publications, press
+    - Returns a full evaluation: career trajectory, fit assessment, strengths, concerns, interview recommendations
+17. **Update Airtable rows** with "Nia Analysis" (full report), "Nia Summary" (2-3 sentence summary). Stage: "Analyzed"
+18. Show recruiter a summary table: Name, Current Company, Nia Summary
+    - If recruiter skipped analysis, candidates go directly from "Enriched" to next step
+
+**Step 5 — Scoring + Outreach (future):**
+19. Score each candidate using `.claude/skills/scoring-rubric/` (internally calls Opus 4.6)
+20. Generate personalized email draft using `.claude/skills/outreach-style/`
+21. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
+22. **Update Airtable rows** with score, rationale, draft email. Stage: "Scored"
 
 ### Phase 4: RECRUITER REVIEW (Pause and Wait)
 
@@ -90,10 +97,11 @@ Once recruiter approves enrichment, run the full chain without stopping. Push to
 
 Pause for recruiter approval on:
 - **Enrichment** (Phase 2 → 3 — after search, before spending credits): "Found X candidates. Enrich top Y?"
+- **Deep Analysis** (Phase 3 Step 4 — after enrichment, before Nia Oracle): "Want me to run deep analysis? Or skip to outreach?" Recruiter can analyze all, pick specific, or skip entirely.
 - **Sending outreach emails** (Phase 5 — recruiter chooses send all, pick specific, or manual)
 - **Drip campaign scheduling** (Phase 5 — confirm cadence before scheduling)
 
-Everything else runs autonomously once enrichment is approved.
+Enrichment steps (Apollo, EnrichLayer, web search) run autonomously once enrichment is approved. Deep analysis requires its own gate because it takes ~5 minutes and the recruiter may want to skip it.
 
 ---
 
@@ -139,7 +147,8 @@ Log to Graphiti at EVERY step:
 | LinkedIn URL | URL | Apollo |
 | GitHub URL | URL | PDL / GitHub search |
 | Personal Website | URL | PDL / Nia search |
-| Nia Analysis | Long text | Nia Tracer |
+| Nia Summary | Text | Orchestrator (2-3 sentence summary from Nia Oracle report) |
+| Nia Analysis | Long text | Nia Oracle (full research report) |
 | Score | Number (1-10) | Opus 4.6 scoring |
 | Score Rationale | Long text | Opus 4.6 scoring |
 | Draft Email Subject | Text | Sonnet 4.6 |
@@ -150,7 +159,7 @@ Log to Graphiti at EVERY step:
 
 ## Attio Pipeline Stages
 
-Draft Ready -> Contacted -> Replied -> Screened -> Intro'd -> Declined
+Enriched -> Analyzed (optional) -> Scored -> Draft Ready -> Contacted -> Replied -> Screened -> Intro'd -> Declined
 
 ## Model Routing Strategy
 
@@ -161,7 +170,7 @@ The chat agent (orchestrator) always runs on **Sonnet 4.6**. Individual tool imp
 | Sourcing (Apollo search, enrich) | Sonnet 4.6 | None (pure API calls) | No LLM needed, just REST calls |
 | Enrichment (EnrichLayer, PDL) | Sonnet 4.6 | None (pure API calls) | No LLM needed |
 | GitHub/Portfolio Discovery | Sonnet 4.6 | None (pure API calls) | No LLM needed |
-| Nia Tracer Analysis | Sonnet 4.6 | None (Nia does the analysis) | Nia's own AI handles it |
+| Nia Oracle Analysis | Sonnet 4.6 | None (Nia uses Opus 4.7 internally) | Nia's own AI handles research + evaluation |
 | **Candidate Scoring** | Sonnet 4.6 | **Opus 4.6** | Best reasoning for nuanced fit assessment |
 | Email Drafting | Sonnet 4.6 | Sonnet 4.6 | Needs good writing quality |
 | CRM Updates (Airtable) | Sonnet 4.6 | None (pure API calls) | No LLM needed |

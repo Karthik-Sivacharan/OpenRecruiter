@@ -16,7 +16,7 @@ An autonomous AI recruiting agency. Give it a job description URL + preferences,
 - **Knowledge Graph:** Graphiti + Neo4j (MCP, recruiting domain only)
 - **Agent Memory:** Mem0 (per-role context compression)
 - **Enrichment:** EnrichLayer, PDL, GitHub GraphQL (REST)
-- **Analysis:** Nia Tracer (REST)
+- **Analysis:** Nia Oracle (REST — deep web research per candidate)
 - **Deploy:** Vercel
 
 ## Architecture
@@ -65,10 +65,11 @@ npm run typecheck       # tsc --noEmit
 
 1. **Intake:** Fetch JD, ask follow-up questions (only about info NOT in JD). Wait for answers.
 2. **Search (free):** Apollo multi-pass search. Present results. Ask "Enrich these X candidates?"
-3. **Enrich + Analyze (autonomous after approval):** Apollo enrich → push to Airtable → EnrichLayer → PDL/GitHub → Nia → Score → Draft emails. Push to Airtable after EACH step so no data is lost.
-4. **Recruiter review:** "Done, go check Airtable." Show summary. Wait.
-5. **Send + Drip:** Recruiter controls sending. Confirm drip before scheduling.
-6. **Auto-reply:** AgentMail webhook reads candidate's Airtable row for context, auto-replies, updates Airtable.
+3. **Enrich (autonomous after approval):** Apollo enrich → push to Airtable → EnrichLayer → web search. Push to Airtable after EACH step so no data is lost.
+4. **Deep Analysis (requires approval):** Ask recruiter. If approved: Nia Oracle researches portfolios/web presence (~5 min). Recruiter can skip straight to outreach.
+5. **Recruiter review:** "Done, go check Airtable." Show summary. Wait.
+6. **Send + Drip:** Recruiter controls sending. Confirm drip before scheduling.
+7. **Auto-reply:** AgentMail webhook reads candidate's Airtable row for context, auto-replies, updates Airtable.
 
 See `.claude/rules/recruiting-pipeline.md` for the detailed step-by-step.
 
@@ -76,9 +77,10 @@ See `.claude/rules/recruiting-pipeline.md` for the detailed step-by-step.
 
 - **Intake questions:** Wait for recruiter to answer before sourcing
 - **Enrichment:** After search, before spending credits — "Enrich these X candidates?"
+- **Deep Analysis:** After enrichment, before Nia Oracle — "Run deep analysis? Or skip to outreach?"
 - **Sending outreach:** Recruiter chooses: send all, pick specific, or send manually via AgentMail
 - **Drip campaign:** Propose details, confirm with recruiter before scheduling
-- **Everything else** (each enrichment step, analysis, scoring, drafting): runs autonomously once enrichment approved
+- **Everything else** (each enrichment step, scoring, drafting): runs autonomously once approved
 
 ## Memory Rules
 
