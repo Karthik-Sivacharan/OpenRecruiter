@@ -32,7 +32,7 @@ The client sends only the new user message + chat ID. The server loads full hist
 - `toUIMessageStreamResponse({ originalMessages, onFinish })` — save after each turn
 - `result.consumeStream()` — ensures `onFinish` fires even if client disconnects
 - `convertToModelMessages()` — reconstructs tool_use/tool_result blocks from saved UIMessages
-- `pruneMessages()` — strips old tool calls/reasoning before sending to API (free, mechanical)
+- ~~`pruneMessages()`~~ — REMOVED in Phase 4 (caused duplicate search bug by stripping Apollo results mid-conversation). Now relying solely on Anthropic server-side context management.
 
 ### Context Management: Free Layers First, Compaction Later
 

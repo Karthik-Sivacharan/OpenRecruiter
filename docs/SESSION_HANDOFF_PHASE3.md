@@ -33,7 +33,7 @@
    - `setChatTitle` tool — agent sets "Company - Role" after intake
 
 5. **Context Management**
-   - `pruneMessages` — strips old tool calls (before-last-2-messages) + reasoning (before-last-message)
+   - ~~`pruneMessages`~~ — REMOVED in Phase 4 (caused duplicate search bug). Replaced by Anthropic server-side context management only.
    - Tool-result clearing — Anthropic server-side at 80k tokens, keeps last 5 tool uses
    - Compaction deferred (would cost ~$0.60/trigger at 150k tokens)
 
