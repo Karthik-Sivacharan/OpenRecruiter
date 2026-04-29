@@ -5,7 +5,6 @@ import { anthropic } from '@ai-sdk/anthropic';
 import {
   streamText,
   convertToModelMessages,
-  pruneMessages,
   stepCountIs,
   type UIMessage,
 } from 'ai';
@@ -167,24 +166,17 @@ As soon as you know the role and company (from the JD URL, pasted text, or recru
 export async function POST(req: Request) {
   const { chatId, messages }: { chatId?: string; messages: UIMessage[] } = await req.json();
 
-  // Layer 1: Local pruning (free) — strip old tool calls + reasoning before sending
   const modelMessages = await convertToModelMessages(messages);
-  const prunedMessages = pruneMessages({
-    messages: modelMessages,
-    reasoning: 'before-last-message',
-    toolCalls: 'before-last-2-messages',
-    emptyMessages: 'remove',
-  });
 
   const result = streamText({
     model: anthropic(
       process.env.MODEL_ORCHESTRATOR || 'claude-sonnet-4-6',
     ),
     system: SYSTEM_PROMPT,
-    messages: prunedMessages,
+    messages: modelMessages,
 
-    // Layer 2: Server-side tool-result clearing (free) — Anthropic clears old tool
-    // results when context exceeds threshold. Data is already in Airtable by then.
+    // Context management (free) — Anthropic clears old tool results when context
+    // exceeds 80K tokens. Data is already in Airtable by then.
     providerOptions: {
       anthropic: {
         contextManagement: {
@@ -245,7 +237,7 @@ export async function POST(req: Request) {
         },
       }),
     },
-    stopWhen: stepCountIs(15),
+    stopWhen: stepCountIs(30),
   });
 
   // Ensure onFinish fires even if the client disconnects mid-stream
