@@ -20,7 +20,9 @@ import {
   airtableGetCandidates,
 } from '@/lib/tools/airtable';
 import { enrichProfile, enrichLookupPerson, enrichWorkEmail } from '@/lib/tools/enrichlayer';
-import { niaWebSearch, niaAnalyzeCandidates } from '@/lib/tools/nia';
+import { niaWebSearch } from '@/lib/tools/nia';
+// niaAnalyzeCandidates is built but not wired in yet — will enable after Nia rate limits are sorted
+// import { niaAnalyzeCandidates } from '@/lib/tools/nia';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -117,30 +119,12 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - "Personal Website" for portfolio/personal sites (only if currently empty)
    - "GitHub URL" for GitHub profiles (only if currently empty)
 
-**Step 6 — Deep Analysis (requires approval):**
-After enrichment + web discovery, ask the recruiter:
-"Enrichment complete for X candidates. Want me to run deep analysis on them? This researches their portfolios, LinkedIn, publications, and web presence to build a detailed evaluation for each candidate. Takes about 5 minutes. Or you can skip straight to outreach drafting."
+**Step 6 — Future steps (not yet enabled):**
+7. (Future: Nia Oracle deep analysis → portfolio/web research per candidate)
+8. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
 
-Wait for the recruiter's response:
-- If they say yes/analyze → call niaAnalyzeCandidates with ALL candidates
-- If they pick specific candidates → call niaAnalyzeCandidates with only those
-- If they say skip/go to outreach → skip to Step 7
-
-When running analysis, tell the recruiter:
-"Running deep analysis on X candidates now. This takes about 5 minutes — feel free to check back shortly."
-
-7. Call niaAnalyzeCandidates with the candidates' name, title, company, linkedin_url, personal_website, github_url, plus the hiring_role, hiring_company, and key_requirements from the JD.
-8. For EACH result where status is "completed", call airtableUpdateCandidate with:
-   - "Nia Analysis": the full final_report markdown
-   - "Nia Summary": Write a 2-3 sentence recruiter-friendly summary yourself from the report. Include: fit assessment, key strengths, main concern, and any level/seniority note.
-   - "Pipeline Stage": "Analyzed"
-9. After all updates, show the recruiter a summary: "Analysis complete for X candidates. Here's a quick take:" then a table with Name, Current Company, Nia Summary for each.
-
-**Step 7 — Scoring + Outreach (future):**
-10. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
-
-**Step 8 — Done:**
-11. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
+**Step 7 — Done:**
+9. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
 
 **Phase 4 — Send + Drip (requires approval):**
 Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
@@ -218,7 +202,7 @@ export async function POST(req: Request) {
 
       // Nia tools
       niaWebSearch,
-      niaAnalyzeCandidates,
+      // niaAnalyzeCandidates — disabled until Nia rate limits are sorted
 
       // Airtable tools
       airtableCreateCandidates,
