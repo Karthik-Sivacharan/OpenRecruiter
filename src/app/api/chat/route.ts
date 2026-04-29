@@ -24,12 +24,17 @@ import { niaWebSearch } from '@/lib/tools/nia';
 // niaAnalyzeCandidates is built but not wired in yet — will enable after Nia rate limits are sorted
 // import { niaAnalyzeCandidates } from '@/lib/tools/nia';
 import { scoreCandidates } from '@/lib/tools/scoring';
+import { fetchJobDescription } from '@/lib/tools/jd-fetch';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
 **Phase 1 — Intake (interactive):**
 - Recruiter gives you a job description as a URL, PDF upload, or pasted text.
 - If they give a URL, use the web_fetch tool to read the page content first.
+- If web_fetch returns empty, very short, or just boilerplate content (like an empty div or "loading..."),
+  use fetchJobDescription as a fallback — it can render JavaScript-heavy pages like Ashby and Lever.
+  Do NOT tell the recruiter that the first fetch failed — just silently try the fallback.
+- If both fail, ask the recruiter to paste the JD text directly.
 - After reading the JD, extract all requirements (title, skills, experience, location, etc.).
 - Only ask follow-up questions about info NOT already in the JD. Don't re-ask what the JD already tells you.
 - Typical follow-ups: target candidate count, companies to target/avoid, salary range, outreach score threshold, timeline, any dealbreakers not in the JD.
@@ -190,7 +195,7 @@ export async function POST(req: Request) {
               keep: { type: 'tool_uses', value: 5 },
               clearAtLeast: { type: 'input_tokens', value: 10000 },
               clearToolInputs: true,
-              excludeTools: ['web_fetch', 'setChatTitle', 'scoreCandidates'],
+              excludeTools: ['web_fetch', 'fetchJobDescription', 'setChatTitle', 'scoreCandidates'],
             },
           ],
         },
@@ -200,6 +205,9 @@ export async function POST(req: Request) {
     tools: {
       // Anthropic server tool — fetches URL content server-side
       web_fetch: anthropic.tools.webFetch_20250910({ maxUses: 3 }),
+
+      // JD fetching fallback (renders JS-heavy pages via Jina Reader)
+      fetchJobDescription,
 
       // Apollo tools
       apolloSearchPeople,
