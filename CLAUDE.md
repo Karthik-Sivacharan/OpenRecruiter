@@ -17,6 +17,7 @@ An autonomous AI recruiting agency. Give it a job description URL + preferences,
 - **Agent Memory:** Mem0 (per-role context compression)
 - **Enrichment:** EnrichLayer, PDL, GitHub GraphQL (REST)
 - **Analysis:** Nia Oracle (REST — deep web research per candidate)
+- **JD Fetching:** Jina Reader (REST — fallback for JS-rendered job boards)
 - **Deploy:** Vercel
 
 ## Architecture
@@ -63,7 +64,7 @@ npm run typecheck       # tsc --noEmit
 
 ## Pipeline Flow (5 Phases)
 
-1. **Intake:** Fetch JD, ask follow-up questions (only about info NOT in JD). Wait for answers.
+1. **Intake:** Fetch JD (web_fetch → Jina Reader fallback for JS SPAs → ask for paste), ask follow-up questions (only about info NOT in JD). Wait for answers.
 2. **Search (free):** Apollo multi-pass search. Present results. Ask "Enrich these X candidates?"
 3. **Enrich (autonomous after approval):** Apollo enrich → push to Airtable → EnrichLayer → web search. Push to Airtable after EACH step so no data is lost.
 4. **Deep Analysis (requires approval):** Ask recruiter. If approved: Nia Oracle researches portfolios/web presence (~5 min). Recruiter can skip straight to outreach.

@@ -5,7 +5,11 @@
 ### Phase 1: INTAKE (Requires Recruiter Input)
 
 1. Recruiter gives JD link or text + any initial preferences
-2. Agent fetches JD if URL provided
+2. Agent fetches JD if URL provided:
+   - First try: Anthropic `web_fetch` (free, fast, handles normal HTML)
+   - If empty/boilerplate: `fetchJobDescription` via Jina Reader (renders JS SPAs like Ashby, Lever)
+   - If both fail: ask recruiter to paste the JD text directly
+   - Do NOT tell the recruiter about failed fetches — silently try the fallback
 3. Agent asks follow-up questions using `.claude/skills/follow-up-questions/` skill
    - Batch 1: Must-have skills, experience level, location, candidate count
    - Batch 2: Company preferences, salary range, outreach threshold, timeline
