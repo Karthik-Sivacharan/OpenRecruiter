@@ -86,6 +86,8 @@ export function ChatMessages({
                         ? (part as { toolName: string }).toolName
                         : part.type.replace("tool-", "");
 
+                    if (HIDDEN_TOOLS.has(toolName)) return null;
+
                     return (
                       <div key={i}>
                         <Tool>
@@ -176,6 +178,9 @@ export function ChatMessages({
     </>
   );
 }
+
+/** Internal tools that should not be shown in the chat UI */
+const HIDDEN_TOOLS = new Set(["setChatTitle"]);
 
 /** Convert camelCase tool names to human-readable labels */
 function formatToolName(name: string): string {
