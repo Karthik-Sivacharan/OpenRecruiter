@@ -23,6 +23,7 @@ import { enrichProfile, enrichLookupPerson, enrichWorkEmail } from '@/lib/tools/
 import { niaWebSearch } from '@/lib/tools/nia';
 // niaAnalyzeCandidates is built but not wired in yet — will enable after Nia rate limits are sorted
 // import { niaAnalyzeCandidates } from '@/lib/tools/nia';
+import { scoreCandidates } from '@/lib/tools/scoring';
 
 const SYSTEM_PROMPT = `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
 
@@ -119,12 +120,21 @@ Once recruiter approves enrichment, run the full chain without stopping:
    - "Personal Website" for portfolio/personal sites (only if currently empty)
    - "GitHub URL" for GitHub profiles (only if currently empty)
 
-**Step 6 — Future steps (not yet enabled):**
+**Step 6 — Candidate Scoring (autonomous):**
 7. (Future: Nia Oracle deep analysis → portfolio/web research per candidate)
-8. (Future: Score with Opus → airtableUpdateCandidate with score + rationale + draft email, stage: "Scored")
+8. Call scoreCandidates ONCE with all UNSCORED candidates (Pipeline Stage is "Enriched" or "Analyzed" — skip any already "Scored"). For each candidate, include:
+   - record_id: their Airtable record ID
+   - name: full name
+   - data: ALL available data formatted as readable text — title, company, employment history, skills, education, certifications, EnrichLayer experiences, summary, personal website, GitHub URL, Nia analysis (if available). The MORE context you provide, the better the score.
+   Also pass:
+   - job_description: the full JD text (or concise summary of key requirements)
+   - role_type: "engineering", "design", "pm", or "other"
+   The tool handles scoring via Opus AND updating Airtable (Fit Score, Fit Rationale, stage "Scored") internally. You do NOT need to call airtableUpdateCandidate after scoring.
 
 **Step 7 — Done:**
-9. Tell recruiter: "Done. Go check Airtable. Want to send outreach?" Use airtableGetCandidates to show a summary.
+9. After scoring completes, present the results table to the recruiter sorted by Fit Score (highest first):
+    Name | Title | Company | Fit Score | Key takeaway from rationale
+10. Tell recruiter: "All candidates scored. Check Airtable for full details. Want to draft outreach emails for the top candidates?"
 
 **Phase 4 — Send + Drip (requires approval):**
 Only send emails after explicit recruiter approval. Propose drip campaign details and wait for confirmation before scheduling.
@@ -180,7 +190,7 @@ export async function POST(req: Request) {
               keep: { type: 'tool_uses', value: 5 },
               clearAtLeast: { type: 'input_tokens', value: 10000 },
               clearToolInputs: true,
-              excludeTools: ['web_fetch', 'setChatTitle'],
+              excludeTools: ['web_fetch', 'setChatTitle', 'scoreCandidates'],
             },
           ],
         },
@@ -203,6 +213,9 @@ export async function POST(req: Request) {
       // Nia tools
       niaWebSearch,
       // niaAnalyzeCandidates — disabled until Nia rate limits are sorted
+
+      // Scoring
+      scoreCandidates,
 
       // Airtable tools
       airtableCreateCandidates,

@@ -48,18 +48,24 @@ Once recruiter approves enrichment, run the full chain without stopping. Push to
 18. Show recruiter a summary table: Name, Current Company, Nia Summary
     - If recruiter skipped analysis, candidates go directly from "Enriched" to next step
 
-**Step 5 — Scoring + Outreach (future):**
-19. Score each candidate using `.claude/skills/scoring-rubric/` (internally calls Opus 4.6)
-20. Generate personalized email draft using `.claude/skills/outreach-style/`
-21. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
-22. **Update Airtable rows** with score, rationale, draft email. Stage: "Scored"
+**Step 5 — Candidate Scoring (autonomous):**
+19. For EACH candidate, `scoreCandidate` → internally calls Opus 4.6 with candidate data + JD
+    - Opus evaluates: skill overlap, experience depth, company trajectory, portfolio/GitHub signals, location fit
+    - Returns: fit_score (1-10) + fit_rationale (3-5 sentence assessment)
+20. **Update Airtable rows** with "Fit Score", "Fit Rationale". Stage: "Scored"
+21. Present summary table to recruiter: Name, Title, Company, Fit Score (sorted highest first)
+
+**Step 6 — Outreach (future):**
+22. Generate personalized email draft using `.claude/skills/outreach-style/`
+23. `agentmailCreateDraft` -> create draft in AgentMail (NOT sent)
+24. **Update Airtable rows** with draft email. Stage: "Draft Ready"
 
 ### Phase 4: RECRUITER REVIEW (Pause and Wait)
 
-21. Agent tells recruiter: "Done. [N] candidates scored. Draft emails ready. Go take a look in Airtable."
-22. Provide a summary table in chat: name, score, title, company (sorted by score descending)
-23. Wait for recruiter to review in Airtable
-24. Ask: "Want to send all outreach, or pick specific candidates?"
+25. Agent tells recruiter: "Done. [N] candidates scored. Go take a look in Airtable."
+26. Provide a summary table in chat: name, fit score, title, company (sorted by fit score descending)
+27. Wait for recruiter to review in Airtable
+28. Ask: "Want to draft outreach emails, or pick specific candidates?"
 
 ### Phase 4: SEND + DRIP SETUP (Requires Approval)
 
@@ -147,10 +153,10 @@ Log to Graphiti at EVERY step:
 | LinkedIn URL | URL | Apollo |
 | GitHub URL | URL | PDL / GitHub search |
 | Personal Website | URL | PDL / Nia search |
-| Nia Summary | Text | Orchestrator (2-3 sentence summary from Nia Oracle report) |
+| Nia Summary | Long text | Orchestrator (2-3 sentence summary from Nia Oracle report) |
 | Nia Analysis | Long text | Nia Oracle (full research report) |
-| Score | Number (1-10) | Opus 4.6 scoring |
-| Score Rationale | Long text | Opus 4.6 scoring |
+| Fit Score | Number (1-10) | Opus 4.6 scoring via scoreCandidate tool |
+| Fit Rationale | Long text | Opus 4.6 scoring via scoreCandidate tool |
 | Draft Email Subject | Text | Sonnet 4.6 |
 | Draft Email Body | Long text | Sonnet 4.6 |
 | AgentMail Thread ID | Text | AgentMail (after send) |
@@ -159,7 +165,7 @@ Log to Graphiti at EVERY step:
 
 ## Attio Pipeline Stages
 
-Enriched -> Analyzed (optional) -> Scored -> Draft Ready -> Contacted -> Replied -> Screened -> Intro'd -> Declined
+Enriched -> Analyzed (optional) -> Scored -> Draft Ready (future) -> Contacted -> Replied -> Screened -> Intro'd -> Declined
 
 ## Model Routing Strategy
 
@@ -171,7 +177,7 @@ The chat agent (orchestrator) always runs on **Sonnet 4.6**. Individual tool imp
 | Enrichment (EnrichLayer, PDL) | Sonnet 4.6 | None (pure API calls) | No LLM needed |
 | GitHub/Portfolio Discovery | Sonnet 4.6 | None (pure API calls) | No LLM needed |
 | Nia Oracle Analysis | Sonnet 4.6 | None (Nia uses Opus 4.7 internally) | Nia's own AI handles research + evaluation |
-| **Candidate Scoring** | Sonnet 4.6 | **Opus 4.6** | Best reasoning for nuanced fit assessment |
+| **Candidate Scoring** | Sonnet 4.6 | **Opus 4.6** | scoreCandidate tool calls Opus internally for nuanced fit assessment |
 | Email Drafting | Sonnet 4.6 | Sonnet 4.6 | Needs good writing quality |
 | CRM Updates (Airtable) | Sonnet 4.6 | None (pure API calls) | No LLM needed |
 | Auto-Reply Generation | -- | Sonnet 4.6 | Runs via webhook, reads Airtable for context |

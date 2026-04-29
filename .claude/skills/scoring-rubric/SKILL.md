@@ -42,7 +42,8 @@ Score every candidate on a 1-10 scale using ALL available data. Never score on r
 ## Scoring Rules
 
 1. ALWAYS explain the score. One sentence per dimension.
-2. If GitHub/portfolio exists but wasn't analyzed, flag it: "Score may increase with Nia Tracer analysis."
+2. If GitHub/portfolio exists but wasn't analyzed, flag it: "Score may increase with Nia Oracle analysis."
 3. Never round up out of kindness. A 6 is a 6.
 4. Compare against the JD, not against other candidates.
-5. Use Claude Opus for scoring (switch model if on Sonnet).
+5. Scoring runs via the `scoreCandidate` tool which calls Opus 4.6 internally.
+6. Results are saved to Airtable as "Fit Score" (1-10) and "Fit Rationale" (3-5 sentences).
