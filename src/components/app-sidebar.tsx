@@ -61,7 +61,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <Button
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 active:scale-[0.97] transition-transform duration-150"
               variant="default"
               onClick={() => router.push("/")}
             >

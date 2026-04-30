@@ -25,7 +25,7 @@ export type ToolProps = ComponentProps<typeof Collapsible>;
 
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
-    className={cn("group not-prose mb-4 w-full rounded-md border", className)}
+    className={cn("group not-prose mb-4 w-full rounded-md border transition-colors duration-200 hover:bg-secondary", className)}
     {...props}
   />
 );
@@ -85,7 +85,7 @@ export const ToolHeader = ({
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center justify-between gap-4 p-3",
+        "flex w-full items-center justify-between gap-4 p-3 transition-colors duration-150",
         className
       )}
       {...props}
@@ -95,7 +95,7 @@ export const ToolHeader = ({
         <span className="font-medium text-sm">{title ?? derivedName}</span>
         {getStatusBadge(state)}
       </div>
-      <ChevronDownIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      <ChevronDownIcon className="size-4 text-muted-foreground transition-transform duration-200 ease-out group-data-[state=open]:rotate-180" />
     </CollapsibleTrigger>
   );
 };
@@ -105,7 +105,7 @@ export type ToolContentProps = ComponentProps<typeof CollapsibleContent>;
 export const ToolContent = ({ className, ...props }: ToolContentProps) => (
   <CollapsibleContent
     className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 p-4 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+      "tool-content data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 space-y-4 p-4 text-popover-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
       className
     )}
     {...props}

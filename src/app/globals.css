@@ -117,6 +117,16 @@
   50% { border-color: rgba(94, 106, 210, 0.6); box-shadow: 0 0 12px rgba(94, 106, 210, 0.25); }
 }
 
+/* Tool expand/collapse easing overrides - DESIGN.md specs */
+[data-state="open"] > .tool-content {
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  animation-duration: 200ms;
+}
+[data-state="closed"] > .tool-content {
+  animation-timing-function: cubic-bezier(0.7, 0, 0.84, 0);
+  animation-duration: 150ms;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

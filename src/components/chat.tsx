@@ -9,12 +9,13 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
   type UIMessage,
 } from "ai";
+import { motion } from "motion/react";
+import { UsersIcon } from "lucide-react";
 
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-  ConversationEmptyState,
 } from "@/components/ai-elements/conversation";
 import { Suggestions, Suggestion } from "@/components/ai-elements/suggestion";
 import {
@@ -88,11 +89,31 @@ export function Chat({ id, initialMessages }: ChatProps) {
       <Conversation>
         <ConversationContent className="mx-auto w-full max-w-3xl gap-4 px-4 md:px-6">
           {isEmpty ? (
-            <ConversationEmptyState
-              title="What role are you hiring for?"
-              description="Describe the role, paste a job description URL, or pick a suggestion below."
-              className="text-foreground"
-            />
+            <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+              >
+                <UsersIcon className="size-10 text-primary/30" strokeWidth={1.5} />
+              </motion.div>
+              <motion.h3
+                className="text-2xl font-[510] tracking-tight text-foreground"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.08, ease: [0.25, 1, 0.5, 1] }}
+              >
+                What role are you hiring for?
+              </motion.h3>
+              <motion.p
+                className="text-sm text-muted-foreground"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.15, ease: [0.25, 1, 0.5, 1] }}
+              >
+                Describe the role, paste a job description URL, or pick a suggestion below.
+              </motion.p>
+            </div>
           ) : (
             <ChatMessages
               messages={messages}
@@ -107,13 +128,23 @@ export function Chat({ id, initialMessages }: ChatProps) {
       {isEmpty && (
         <div className="mx-auto w-full max-w-3xl px-4 pb-2 md:px-6">
           <Suggestions className="justify-center">
-            {SUGGESTIONS.map((s) => (
-              <Suggestion
+            {SUGGESTIONS.map((s, i) => (
+              <motion.div
                 key={s}
-                suggestion={s}
-                onClick={(text) => sendMessage({ text })}
-                className="border-input text-muted-foreground hover:bg-accent hover:text-foreground"
-              />
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.3,
+                  delay: 0.2 + i * 0.06,
+                  ease: [0.25, 1, 0.5, 1],
+                }}
+              >
+                <Suggestion
+                  suggestion={s}
+                  onClick={(text) => sendMessage({ text })}
+                  className="border-input text-muted-foreground hover:bg-accent hover:text-foreground"
+                />
+              </motion.div>
             ))}
           </Suggestions>
         </div>
