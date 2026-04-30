@@ -1,6 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { AgentMailClient } from 'agentmail';
+import { getRecruiter } from '@/lib/config/recruiters';
 
 const AIRTABLE_API_KEY = () => process.env.AIRTABLE_API_KEY || '';
 const AIRTABLE_BASE_ID = () => process.env.AIRTABLE_BASE_ID || '';
@@ -84,18 +85,22 @@ export const agentmailCreateDrafts = tool({
       error?: string;
     }> = [];
 
+    const recruiter = getRecruiter();
+
     for (const candidate of candidates) {
       try {
+        const fullBody = `${candidate.body}\n\n${recruiter.signatureText}`;
         const htmlBody = candidate.body
           .split('\n')
           .map((line) => (line.trim() === '' ? '<br>' : `<p>${line}</p>`))
           .join('');
+        const fullHtml = `${htmlBody}${recruiter.signatureHtml}`;
 
         const draft = await client.inboxes.drafts.create(inboxId, {
           to: [candidate.email],
           subject: candidate.subject,
-          text: candidate.body,
-          html: htmlBody,
+          text: fullBody,
+          html: fullHtml,
           labels: [
             'draft-ready',
             `airtable-${candidate.record_id}`,

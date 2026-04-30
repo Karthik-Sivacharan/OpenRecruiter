@@ -16,11 +16,17 @@ Every email must do THREE things:
 
 If any of these is missing, the email is not ready.
 
-## Structure (75-125 words)
+## Structure (75-125 words, not counting signature)
 
-1. **Hook (1-2 sentences):** Reference something SPECIFIC about this candidate's work. A GitHub repo, a blog post, a career move, a specific project. Then connect it to why it caught your eye for THIS role.
-2. **Role pitch (2-3 sentences):** Name the ACTUAL HIRING COMPANY (never the recruiting agency). Include 1 compelling detail from the JD (product, users, valuation, funding stage, team, mission). Include comp range if available in the JD. Frame as why this person would find this interesting.
-3. **CTA (1 sentence):** Interest-based, NOT a meeting request. "Interested?" or "Worth a look?" or "Curious?" These convert 2x better than "Open to a chat?"
+The recruiter's name, intro, preferred CTA, and signature are provided by the system. Use them exactly.
+
+1. **Subject line:** "Role at Company" format, normal capitalization. E.g. "Senior Product Designer at ComfyUI". If investor info is in the JD, can add: "Senior Product Designer at ComfyUI (a16z backed)".
+2. **Intro (1 sentence):** "Hi {first_name}, I'm {recruiter_name}, {recruiter_intro}." This is provided by the system prompt.
+3. **Hook (1-2 sentences):** Reference something SPECIFIC about this candidate's work FROM THEIR DATA. Then connect it to why it caught your eye for THIS role.
+4. **Role pitch (2-3 sentences):** Name the ACTUAL HIRING COMPANY (never the recruiting agency). Include 1 compelling detail from the JD (product, users, valuation, funding stage, team, mission). Include comp range if available in the JD.
+5. **Connection (1 sentence):** Link their experience to a specific JD requirement.
+6. **CTA (1 sentence):** Use the recruiter's preferred CTA from the system prompt.
+7. **Signature:** Auto-appended by the agentmailCreateDrafts tool. Do NOT include it in the draft body.
 
 ## Hiring Context Rules (CRITICAL)
 
@@ -96,11 +102,10 @@ This is honest — it references real data (title, company) without inventing sp
 
 ## Subject Lines
 
-- 2-4 words, under 50 characters, lowercase
-- Should look like it came from a colleague, not a recruiter
-- Reference their work or the role topic
-- Good: "your gradient accumulation approach", "design systems at comfyui", "ml platform role"
-- Bad: "Exciting Opportunity!", "Job Opening", "Are you open to new roles?", "Quick question"
+- Format: "Role at Company" — normal capitalization, under 60 characters
+- If investor info is known: "Role at Company (a16z backed)" or "Role at Company (YC W24)"
+- Good: "Senior Product Designer at ComfyUI", "Staff ML Engineer at Eragon (YC W24)", "Search Infra Lead at Kova"
+- Bad: "Exciting Opportunity!", "Job Opening", "Are you open to new roles?", "Quick question", "your gradient accumulation approach"
 
 ## Pre-Flight Checklist
 
@@ -117,52 +122,53 @@ Before finalizing ANY email, verify:
 
 ## Good Examples
 
-Example A (GitHub + JD connection, 80 words):
+Example A (Rich candidate data, 95 words):
 ```
-Subject: design systems at comfyui
+Subject: Senior Product Designer at ComfyUI
 
-Hey Lola,
+Hi Lola, I'm Carl, a former product designer turned design recruiter.
 
-Your design systems work at Adobe caught my eye, especially building cohesive design language across products at that scale.
+Your trajectory from Cloud AI at Google to Gen AI design at Adobe shows you know how to make complex AI products feel intuitive. That is a rare skill.
 
-ComfyUI is looking for a Senior Product Designer to own the UX for their visual AI workflow platform. 4M+ users including Netflix and OpenAI, $500M valuation, and the core challenge is translating deeply technical creative tools into elegant interfaces. $150K-$300K + equity.
+ComfyUI is hiring a Senior Product Designer to own the UX for their visual AI workflow platform. 4M+ users including Netflix, OpenAI, and Ubisoft. Series B, $500M valuation. The core challenge: translating node-based AI tooling into elegant creative experiences. $150K-$300K + equity, on-site in SF.
 
-Your experience building systems-level design at Adobe is exactly what this role needs.
+Your experience designing AI-powered creative tools at Adobe and YouTube maps directly to what they need.
 
-Interested?
+Open to a quick conversation if this sounds interesting?
 ```
 
-Example B (Blog + JD connection, 78 words):
+Example B (Blog + JD connection, 90 words):
 ```
-Subject: your vector db post
+Subject: Staff Search Engineer at Kova (Sequoia backed)
 
-Hey Marcus,
+Hi Marcus, I'm Carl, a former product designer turned design recruiter.
 
 That comparison of pgvector vs Pinecone you wrote last month was the most practical take I've seen on the tradeoff.
 
-Kova (Series B, $40M raised) is building search infrastructure that does exactly what you described: hybrid vector + keyword at scale. They process 2B queries/day for customers like Shopify and Notion. Looking for a Staff Engineer to lead the indexing team. $200-240k + equity.
+Kova (Series B, Sequoia backed, $40M raised) is building search infrastructure that does exactly what you described: hybrid vector + keyword at scale. They process 2B queries/day for customers like Shopify and Notion. Looking for a Staff Engineer to lead the indexing team. $200-240k + equity.
 
-Worth a look?
+Your writing shows deep fluency in exactly the problem they're solving.
+
+Open to a quick conversation if this sounds interesting?
 ```
 
-Example C (Career trajectory + JD connection, 85 words):
+Example C (Thin data, role-led, 80 words):
 ```
-Subject: ml platform at eragon
+Subject: Senior Product Designer at ComfyUI
 
-Hey Sarah,
+Hi Minsun, I'm Carl, a former product designer turned design recruiter.
 
-Going from infra at Stripe to leading platform eng at Datadog is a strong trajectory, especially the distributed training work your team shipped last year.
+ComfyUI is the leading visual AI platform (4M+ users, Netflix and OpenAI use it, $500M valuation). They need a Senior Product Designer to translate complex node-based AI tools into elegant creative experiences. $150K-$300K + equity, on-site in SF.
 
-Eragon (YC W24, Series A) is building ML infrastructure for autonomous agents. They need someone to own the distributed training pipeline, serving 50K+ developers. The challenge is real-time model updates at scale. $190-230k + early equity.
+Your product design experience at Unity caught my eye for this role.
 
-Your Datadog experience maps directly to what they're building.
-
-Curious?
+Open to a quick conversation if this sounds interesting?
 ```
+This is for candidates with thin data (just title + company). Lead with the role, keep the candidate reference honest and minimal.
 
 ## Bad Examples (DO NOT write like these)
 
-Bad Example 1 (no JD context, generic pitch):
+Bad Example 1 (no JD context, wrong company, no intro):
 ```
 Subject: Senior Product Designer role
 
@@ -176,7 +182,7 @@ greenfield product, real ownership over the entire design direction.
 
 Interested?
 ```
-Why this is bad: Uses the agency name "X2 Talent" instead of the hiring company. Zero JD details. "Small team, greenfield, real ownership" is a generic pitch that could describe any startup. No comp range despite JD having $150K-$300K. No connection between candidate's work and the role.
+Why this is bad: No recruiter intro. Uses the agency name "X2 Talent" instead of "ComfyUI". Zero JD details. "Small team, greenfield, real ownership" is generic. No comp range despite JD having $150K-$300K. No connection between candidate and role.
 
 Bad Example 2 (AI slop):
 ```
@@ -195,4 +201,17 @@ dynamic team.
 
 Would you be open to a 15-minute chat this week to discuss further?
 ```
-Why this is bad: Em dashes, "I hope this finds you well", "exciting opportunity", "impressive background", "fast-paced", "innovative", "transforming the landscape", "passionate", "dynamic team", meeting request CTA. Zero personalization, zero JD details, 95 words of pure fluff.
+Why this is bad: No recruiter intro. Em dashes. "I hope this finds you well", "exciting opportunity", "impressive background", "fast-paced", "innovative", "transforming the landscape", "passionate", "dynamic team". Meeting request CTA. Zero JD details. Pure fluff.
+
+Bad Example 3 (hallucinated personalization):
+```
+Subject: Senior Product Designer at ComfyUI
+
+Hi Minsun, I'm Carl, a former product designer turned design recruiter.
+
+Your stunning portfolio of 3D interface designs really caught my eye,
+especially the AR prototyping work you showcased at Config last year.
+
+ComfyUI is hiring...
+```
+Why this is bad: The candidate's Airtable row has no portfolio, no conference talks, no "3D interface designs". This is fabricated. If the data isn't there, don't invent it. Use the thin-data template instead.
