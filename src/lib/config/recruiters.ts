@@ -15,8 +15,8 @@ const RECRUITERS: Record<string, RecruiterProfile> = {
     title: 'Founder, x2talent',
     intro: 'a former product designer turned design recruiter',
     cta: 'Open to a quick conversation if this sounds interesting?',
-    signatureText: 'Carl Wheatley\nFounder, x2talent',
-    signatureHtml: '<p>Carl Wheatley<br>Founder, x2talent</p>',
+    signatureText: 'Carl Wheatley\nFounder, x2talent\nhttps://x2talent.com | https://www.linkedin.com/in/carlcwheatley/',
+    signatureHtml: '<p>Carl Wheatley<br>Founder, x2talent<br><a href="https://x2talent.com">x2talent.com</a> | <a href="https://www.linkedin.com/in/carlcwheatley/">LinkedIn</a></p>',
   },
 };
 
