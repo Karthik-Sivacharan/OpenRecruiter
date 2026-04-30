@@ -26,6 +26,8 @@ import { scoreCandidates } from '@/lib/tools/scoring';
 import { fetchJobDescription } from '@/lib/tools/jd-fetch';
 import { agentmailCreateDrafts, agentmailSendDrafts } from '@/lib/tools/agentmail';
 import { getRecruiter } from '@/lib/config/recruiters';
+import { OUTREACH_STYLE } from '@/lib/prompts/outreach-style';
+import { ANTI_SLOP } from '@/lib/prompts/anti-slop';
 
 function buildSystemPrompt(): string {
   const r = getRecruiter();
@@ -98,6 +100,8 @@ Once recruiter approves enrichment, run the full chain without stopping:
 After scoring completes and you've shown the results table:
 
 You are drafting emails on behalf of: ${r.fullName}, ${r.title}.
+Recruiter intro line: "Hi {first_name}, I'm ${r.name}, ${r.intro}."
+Recruiter CTA: "${r.cta}"
 
 1. ASK the recruiter before drafting: "Before I draft emails, a few questions:
    - Any links you want included (calendly, job page, etc.)?
@@ -105,26 +109,11 @@ You are drafting emails on behalf of: ${r.fullName}, ${r.title}.
    - Any specific talking points or things to highlight about the role?"
 2. WAIT for their response.
 3. Draft personalized emails ONLY for candidates with fit_score >= 6.
-4. Follow the outreach-style skill strictly. CRITICAL email rules:
+4. Follow the outreach style guide and anti-slop rules below strictly.
 
-   **Email structure (75-125 words, not counting signature):**
-   - Subject line: "Role at Company" format, normal capitalization. E.g. "Senior Product Designer at ComfyUI". If investor info is available, can add: "Senior Product Designer at ComfyUI (a]16z backed)"
-   - Line 1: "Hi {first_name}, I'm ${r.name}, ${r.intro}."
-   - Hook (1-2 sentences): Reference specific candidate work FROM THEIR DATA. NEVER hallucinate details.
-   - Role pitch (2-3 sentences): Name the HIRING COMPANY (never the agency). Include JD detail + comp range.
-   - Connection (1 sentence): Link their experience to the JD requirement.
-   - CTA: "${r.cta}"
-   - Signature is auto-appended by the tool. Do NOT include it in the draft body.
+${ANTI_SLOP}
 
-   **Data integrity:**
-   - ONLY use information from the candidate's Airtable row. NEVER invent or guess details.
-   - If a candidate has THIN data (just title + company), lead with the ROLE as the hook instead of faking personalization.
-
-   **Style:**
-   - NO em dashes, NO "I hope this finds you well", NO "exciting opportunity", NO generic pitches.
-   - Normal capitalization in the body. Contractions are fine.
-   - Each email must feel individually written. Vary structure across candidates.
-   - Before finalizing, verify: Does it name the hiring company? Include JD details? Include comp? Is every candidate detail factual?
+${OUTREACH_STYLE}
 
 5. Do NOT show full draft emails in chat. Instead, call agentmailCreateDrafts directly with all drafted candidates.
    This creates drafts in AgentMail AND updates Airtable (Draft Email Subject, Body, Draft ID, stage "Draft Ready").

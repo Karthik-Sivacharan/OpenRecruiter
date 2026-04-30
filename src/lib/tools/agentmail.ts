@@ -89,8 +89,12 @@ export const agentmailCreateDrafts = tool({
 
     for (const candidate of candidates) {
       try {
-        const fullBody = `${candidate.body}\n\n${recruiter.signatureText}`;
-        const htmlBody = candidate.body
+        // Safety net: replace any em dashes that slipped through
+        const cleanSubject = candidate.subject.replace(/\u2014/g, ',');
+        const cleanBody = candidate.body.replace(/\u2014/g, ',');
+
+        const fullBody = `${cleanBody}\n\n${recruiter.signatureText}`;
+        const htmlBody = cleanBody
           .split('\n')
           .map((line) => (line.trim() === '' ? '<br>' : `<p>${line}</p>`))
           .join('');
@@ -98,7 +102,7 @@ export const agentmailCreateDrafts = tool({
 
         const draft = await client.inboxes.drafts.create(inboxId, {
           to: [candidate.email],
-          subject: candidate.subject,
+          subject: cleanSubject,
           text: fullBody,
           html: fullHtml,
           labels: [
@@ -112,8 +116,8 @@ export const agentmailCreateDrafts = tool({
         const draftId = draft.draftId ?? null;
 
         await updateAirtableDraft(candidate.record_id, {
-          'Draft Email Subject': candidate.subject,
-          'Draft Email Body': candidate.body,
+          'Draft Email Subject': cleanSubject,
+          'Draft Email Body': cleanBody,
           'AgentMail Draft ID': draftId,
           'Pipeline Stage': 'Draft Ready',
         });
