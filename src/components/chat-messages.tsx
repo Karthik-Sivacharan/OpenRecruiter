@@ -23,6 +23,7 @@ import {
   ReasoningTrigger,
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 
 interface ChatMessagesProps {
   messages: UIMessage[];
@@ -40,6 +41,38 @@ export function ChatMessages({
   status,
   addToolApprovalResponse,
 }: ChatMessagesProps) {
+  const isStreaming = status === "streaming" || status === "submitted";
+
+  // Detect if the agent hit the step limit (stream ended with tool calls, no final text)
+  const hitStepLimit = (() => {
+    if (status !== "ready" || messages.length === 0) return false;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return false;
+    const parts = lastMsg.parts;
+    if (parts.length === 0) return false;
+    const lastPart = parts[parts.length - 1];
+    // If the last part is a completed tool call (not text), the model was cut off
+    return lastPart.type !== "text" && lastPart.type !== "reasoning" && lastPart.type !== "step-start";
+  })();
+
+  // Show a shimmer when the agent is working but hasn't produced text yet,
+  // or when the last visible part is a completed tool call (agent is thinking about next step)
+  const showThinkingIndicator = (() => {
+    if (!isStreaming) return false;
+    if (messages.length === 0) return true;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.role !== "assistant") return true; // waiting for first response
+    const parts = lastMsg.parts;
+    if (parts.length === 0) return true;
+    const lastPart = parts[parts.length - 1];
+    // Show shimmer if the last part is a completed tool call (agent processing results)
+    if (lastPart.type !== "text" && lastPart.type !== "reasoning") {
+      const state = (lastPart as { state?: string }).state;
+      return state === "output-available" || state === "output-error";
+    }
+    return false;
+  })();
+
   return (
     <>
       {messages.map((message, idx) => (
@@ -88,9 +121,12 @@ export function ChatMessages({
 
                     if (HIDDEN_TOOLS.has(toolName)) return null;
 
+                    const toolState = (part as { state: string }).state;
+                    const isRunning = toolState === "input-available" || toolState === "input-streaming";
+
                     return (
                       <div key={i}>
-                        <Tool>
+                        <Tool className={isRunning ? "border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]" : undefined}>
                           <ToolHeader
                             type={part.type as "dynamic-tool"}
                             state={(part as { state: string }).state as never}
@@ -175,6 +211,22 @@ export function ChatMessages({
           </MessageContent>
         </Message>
       ))}
+
+      {showThinkingIndicator && (
+        <div className="flex items-center gap-2 px-1 py-2">
+          <Shimmer className="text-sm text-muted-foreground" duration={1.5}>
+            Working on it...
+          </Shimmer>
+        </div>
+      )}
+
+      {hitStepLimit && (
+        <div className="mx-auto my-4 max-w-md rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-200">
+          The agent reached its processing limit for this turn. Type{" "}
+          <span className="font-mono font-semibold">continue</span> to pick up
+          where it left off.
+        </div>
+      )}
     </>
   );
 }
