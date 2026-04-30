@@ -112,7 +112,7 @@ export function Chat({ id, initialMessages }: ChatProps) {
                 key={s}
                 suggestion={s}
                 onClick={(text) => sendMessage({ text })}
-                className="border-[rgba(255,255,255,0.08)] text-[#d0d6e0] hover:bg-[#28282c] hover:text-[#f7f8f8]"
+                className="border-input text-muted-foreground hover:bg-accent hover:text-foreground"
               />
             ))}
           </Suggestions>
@@ -122,7 +122,7 @@ export function Chat({ id, initialMessages }: ChatProps) {
       <div className="mx-auto w-full max-w-3xl px-4 pb-4 pt-2 md:px-6">
         <PromptInput
           onSubmit={({ text, files }) => sendMessage({ text, files })}
-          className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#0f1011]"
+          className="rounded-xl border border-input bg-card"
         >
           <PromptInputTextarea placeholder="Describe the role you're hiring for..." />
           <PromptInputFooter>

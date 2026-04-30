@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatStatus, UIMessage } from "ai";
+import { motion, AnimatePresence } from "motion/react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   Tool,
@@ -75,8 +76,15 @@ export function ChatMessages({
 
   return (
     <>
+      <AnimatePresence mode="popLayout">
       {messages.map((message, idx) => (
-        <Message key={message.id || `msg-${idx}`} from={message.role}>
+        <motion.div
+          key={message.id || `msg-${idx}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+        >
+        <Message from={message.role}>
           <MessageContent>
             {message.parts.map((part, i) => {
               switch (part.type) {
@@ -111,7 +119,7 @@ export function ChatMessages({
                   return (
                     <div
                       key={i}
-                      className="my-3 border-t border-[rgba(255,255,255,0.05)]"
+                      className="my-3 border-t border-border"
                     />
                   );
                 }
@@ -134,7 +142,7 @@ export function ChatMessages({
 
                     return (
                       <div key={i}>
-                        <Tool className={isRunning ? "border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]" : undefined}>
+                        <Tool className={isRunning ? "animate-tool-pulse" : undefined}>
                           <ToolHeader
                             type={part.type as "dynamic-tool"}
                             state={(part as { state: string }).state as never}
@@ -218,22 +226,43 @@ export function ChatMessages({
             })}
           </MessageContent>
         </Message>
+        </motion.div>
       ))}
+      </AnimatePresence>
 
       {showThinkingIndicator && (
-        <div className="flex items-center gap-2 px-1 py-2">
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          className="flex items-center gap-3 rounded-lg bg-muted/50 border border-border px-4 py-3"
+        >
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="size-1.5 rounded-full bg-muted-foreground/50"
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+              />
+            ))}
+          </div>
           <Shimmer className="text-sm text-muted-foreground" duration={1.5}>
             Working on it...
           </Shimmer>
-        </div>
+        </motion.div>
       )}
 
       {hitStepLimit && (
-        <div className="mx-auto my-4 max-w-md rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-200">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="mx-auto my-4 max-w-md rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-200">
           The agent reached its processing limit for this turn. Type{" "}
           <span className="font-mono font-semibold">continue</span> to pick up
           where it left off.
-        </div>
+        </motion.div>
       )}
     </>
   );
