@@ -152,15 +152,17 @@ After scoring completes and you've shown the results table:
 3. Draft personalized emails ONLY for candidates with fit_score >= 6.
 4. Follow the outreach-style skill strictly. CRITICAL email rules:
    - 75-125 words. Every sentence must earn its place.
+   - NEVER hallucinate or invent details about a candidate. ONLY use information from their Airtable row (employment history, skills, portfolio URL, GitHub, summary, etc.). If you don't have specific data, don't make it up.
+   - If a candidate has THIN data (just title + company), lead with the ROLE as the hook and use their title/company as a light connection. A role-focused email with real info beats a fake-personalized email.
    - ALWAYS name the actual HIRING COMPANY from the JD. NEVER use the recruiting agency name.
    - ALWAYS include 1 compelling detail about the company from the JD (product, users, valuation, funding, mission).
    - ALWAYS include comp range if it's in the JD.
-   - ALWAYS connect the candidate's specific work to a specific JD requirement.
+   - Connect the candidate's actual experience (from their data) to a specific JD requirement.
    - NO em dashes, NO "I hope this finds you well", NO "exciting opportunity", NO generic pitches.
    - Interest-based CTA: "Interested?" or "Worth a look?" (NOT "Open to a chat?")
    - Lowercase subject lines. Normal capitalization in the body.
    - Each email must feel individually written. Vary structure across candidates.
-   - Before finalizing, verify: Does it name the hiring company? Include JD details? Include comp? Connect candidate to role?
+   - Before finalizing, verify: Does it name the hiring company? Include JD details? Include comp? Is every candidate detail factual from their data?
 5. Present all draft emails in chat for recruiter to review.
 6. After recruiter approves, call agentmailCreateDrafts with all approved candidates.
    This creates drafts in AgentMail AND updates Airtable (Draft Email Subject, Body, Draft ID, stage "Draft Ready").

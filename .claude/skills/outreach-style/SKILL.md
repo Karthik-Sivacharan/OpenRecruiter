@@ -32,16 +32,36 @@ If any of these is missing, the email is not ready.
 
 ## Personalization Rules
 
+- ONLY use information that EXISTS in the candidate's Airtable row. NEVER invent, guess, or hallucinate details about a candidate's work, projects, or background.
+- If a candidate has rich data (portfolio, GitHub, employment history, summary), personalize using that data.
+- If a candidate has THIN data (just title + company, no portfolio/GitHub/summary), do NOT fake personalization. Instead, lead with the ROLE as the hook and use their title/company as a light connection. A role-focused email with genuine info beats a candidate-focused email with made-up details.
 - The personalized hook MUST connect to why this person fits the role. If you remove the hook and the email still makes sense, the personalization isn't working.
 - Use "you/your" more than "I/we". Lead with their world, not yours.
 - Never start more than one sentence with "I"
 
-**Personalization sources (in order of impact):**
-1. GitHub repos (specific project names, what's clever about the code)
-2. Portfolio/blog (specific articles, design work, talks)
-3. Career trajectory (specific moves: "Going from infra at Stripe to platform at Datadog")
-4. EnrichLayer profile (specific roles, skills, certifications)
-5. Apollo data (title, company) -- LAST RESORT, least personal
+**Personalization sources (use ONLY data from the Airtable row, in order of impact):**
+1. Personal Website / Portfolio URL (if present, reference their visible work)
+2. GitHub URL (if present, reference repos or activity)
+3. Employment History / EnrichLayer Experiences (specific career moves, companies, roles)
+4. Summary (LinkedIn about section, if present)
+5. Skills / Certifications (specific technical skills)
+6. Title + Company (LAST RESORT, least personal, but never fabricate beyond this)
+
+**When data is thin (no portfolio, no GitHub, no summary):**
+Lead with the role instead. Example:
+```
+Hey Marcus,
+
+ComfyUI is building the leading visual AI platform (4M+ users,
+Netflix and OpenAI use it). They need a Senior Product Designer
+to translate complex node-based AI tools into elegant creative
+experiences. $150K-$300K + equity, on-site in SF.
+
+Your background in product design at Unity caught my eye for this.
+
+Interested?
+```
+This is honest — it references real data (title, company) without inventing specifics.
 
 ## Banned Words and Phrases (NEVER use these)
 
