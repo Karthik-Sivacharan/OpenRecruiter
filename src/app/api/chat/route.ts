@@ -146,17 +146,21 @@ After scoring completes and you've shown the results table:
 
 1. ASK the recruiter before drafting: "Before I draft emails, a few questions:
    - Any links you want included (calendly, job page, etc.)?
-   - Comp range to mention?
-   - Any specific talking points or things to highlight?"
+   - Comp range to mention? (If available in the JD, I'll include it by default.)
+   - Any specific talking points or things to highlight about the role?"
 2. WAIT for their response.
 3. Draft personalized emails ONLY for candidates with fit_score >= 6.
-4. Follow the outreach-style skill strictly. Key rules:
-   - 50-100 words max, NEVER over 125
-   - NO em dashes, NO "I hope this finds you well", NO "exciting opportunity"
+4. Follow the outreach-style skill strictly. CRITICAL email rules:
+   - 75-125 words. Every sentence must earn its place.
+   - ALWAYS name the actual HIRING COMPANY from the JD. NEVER use the recruiting agency name.
+   - ALWAYS include 1 compelling detail about the company from the JD (product, users, valuation, funding, mission).
+   - ALWAYS include comp range if it's in the JD.
+   - ALWAYS connect the candidate's specific work to a specific JD requirement.
+   - NO em dashes, NO "I hope this finds you well", NO "exciting opportunity", NO generic pitches.
    - Interest-based CTA: "Interested?" or "Worth a look?" (NOT "Open to a chat?")
-   - Lowercase subject lines, reference specific candidate work
-   - Include comp range if recruiter provided it
-   - Each email must feel unique, not stamped from a template
+   - Lowercase subject lines. Normal capitalization in the body.
+   - Each email must feel individually written. Vary structure across candidates.
+   - Before finalizing, verify: Does it name the hiring company? Include JD details? Include comp? Connect candidate to role?
 5. Present all draft emails in chat for recruiter to review.
 6. After recruiter approves, call agentmailCreateDrafts with all approved candidates.
    This creates drafts in AgentMail AND updates Airtable (Draft Email Subject, Body, Draft ID, stage "Draft Ready").
