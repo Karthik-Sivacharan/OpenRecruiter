@@ -20,7 +20,7 @@ import {
 } from '@/lib/tools/airtable';
 import { enrichAndSaveProfiles, enrichLookupPerson, enrichWorkEmail } from '@/lib/tools/enrichlayer';
 import { searchAndSaveWebPresence } from '@/lib/tools/nia';
-// niaAnalyzeCandidates is built but not wired in yet — will enable after Nia rate limits are sorted
+// niaAnalyzeCandidates is built but not wired in yet  - will enable after Nia rate limits are sorted
 // import { niaAnalyzeCandidates } from '@/lib/tools/nia';
 import { scoreCandidates } from '@/lib/tools/scoring';
 import { fetchJobDescription } from '@/lib/tools/jd-fetch';
@@ -173,7 +173,7 @@ export async function POST(req: Request) {
     system: buildSystemPrompt(),
     messages: modelMessages,
 
-    // Context management (free) — Anthropic clears old tool results when context
+    // Context management (free) - Anthropic clears old tool results when context
     // exceeds 80K tokens. Data is already in Airtable by then.
     providerOptions: {
       anthropic: {
@@ -193,7 +193,7 @@ export async function POST(req: Request) {
     },
 
     tools: {
-      // Anthropic server tool — fetches URL content server-side
+      // Anthropic server tool - fetches URL content server-side
       web_fetch: anthropic.tools.webFetch_20250910({ maxUses: 3 }),
 
       // JD fetching fallback (renders JS-heavy pages via Jina Reader)
@@ -210,7 +210,7 @@ export async function POST(req: Request) {
 
       // Nia tools
       searchAndSaveWebPresence,
-      // niaAnalyzeCandidates — disabled until Nia rate limits are sorted
+      // niaAnalyzeCandidates - disabled until Nia rate limits are sorted
 
       // Scoring
       scoreCandidates,

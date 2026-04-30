@@ -131,7 +131,7 @@ async function runApolloSearch(
 }
 
 // ---------------------------------------------------------------------------
-// apolloMultiSearch — run multiple search passes in parallel + deduplicate
+// apolloMultiSearch - run multiple search passes in parallel + deduplicate
 // ---------------------------------------------------------------------------
 
 const SearchPassSchema = z.object({
@@ -157,7 +157,7 @@ export const apolloMultiSearch = tool({
       .array(SearchPassSchema)
       .min(1)
       .max(5)
-      .describe('Array of search configurations — each pass uses different title variations or filters'),
+      .describe('Array of search configurations - each pass uses different title variations or filters'),
   }),
   execute: async ({ passes }) => {
     // Run all search passes in parallel

@@ -101,8 +101,8 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* SidebarFooter — add user/settings later */}
-      {/* SidebarRail — add drag-to-resize later */}
+      {/* SidebarFooter - add user/settings later */}
+      {/* SidebarRail - add drag-to-resize later */}
     </Sidebar>
   );
 }

@@ -20,14 +20,14 @@ function airtableHeaders(): Record<string, string> {
 }
 
 // ---------------------------------------------------------------------------
-// Scoring rubric — embedded in the system prompt sent to Opus
+// Scoring rubric - embedded in the system prompt sent to Opus
 // ---------------------------------------------------------------------------
 
 const SCORING_RUBRIC = `You are an expert technical recruiter scoring a candidate's fit for a specific role.
 
 ## Instructions
 
-Score the candidate on a 1-10 scale based on ALL available data. Be precise and honest — never round up out of kindness.
+Score the candidate on a 1-10 scale based on ALL available data. Be precise and honest - never round up out of kindness.
 
 ## Scoring Dimensions
 
@@ -257,7 +257,7 @@ async function updateAirtableScore(result: ScoreResult): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// scoreCandidates — batch tool: score all + update Airtable in one call
+// scoreCandidates - batch tool: score all + update Airtable in one call
 // ---------------------------------------------------------------------------
 
 export const scoreCandidates = tool({

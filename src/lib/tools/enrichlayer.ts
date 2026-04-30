@@ -215,7 +215,7 @@ function formatProfileToAirtableFields(
     fields['Certifications'] = profile.certifications
       .map((c) => {
         const name = c.name || 'Certification';
-        const authority = c.authority ? ` — ${c.authority}` : '';
+        const authority = c.authority ? ` - ${c.authority}` : '';
         const year = formatDatePart(c.starts_at);
         const yearStr = year ? ` (${year})` : '';
         return `${name}${authority}${yearStr}`;
@@ -256,7 +256,7 @@ function formatProfileToAirtableFields(
     fields['Languages'] = profile.languages.join(', ');
   }
 
-  // Personal Email — only set if Apollo didn't already
+  // Personal Email - only set if Apollo didn't already
   if (!existingPersonalEmail && profile.personal_emails.length > 0) {
     fields['Personal Email'] = profile.personal_emails[0];
   }
@@ -362,7 +362,7 @@ async function airtableFetchByRole(
 }
 
 // ---------------------------------------------------------------------------
-// enrichAndSaveProfiles — Self-serving: fetches candidates from Airtable by role
+// enrichAndSaveProfiles - Self-serving: fetches candidates from Airtable by role
 // ---------------------------------------------------------------------------
 
 export const enrichAndSaveProfiles = tool({
@@ -460,7 +460,7 @@ export const enrichAndSaveProfiles = tool({
 });
 
 // ---------------------------------------------------------------------------
-// enrichProfile — Fetch full profile by LinkedIn URL (single, kept for edge cases)
+// enrichProfile - Fetch full profile by LinkedIn URL (single, kept for edge cases)
 // ---------------------------------------------------------------------------
 
 export const enrichProfile = tool({
@@ -526,7 +526,7 @@ export const enrichProfile = tool({
 });
 
 // ---------------------------------------------------------------------------
-// enrichLookupPerson — Find person by name + company (no LinkedIn URL needed)
+// enrichLookupPerson - Find person by name + company (no LinkedIn URL needed)
 // ---------------------------------------------------------------------------
 
 export const enrichLookupPerson = tool({
@@ -607,7 +607,7 @@ export const enrichLookupPerson = tool({
 });
 
 // ---------------------------------------------------------------------------
-// enrichWorkEmail — Get work email from LinkedIn URL
+// enrichWorkEmail - Get work email from LinkedIn URL
 // ---------------------------------------------------------------------------
 
 export const enrichWorkEmail = tool({

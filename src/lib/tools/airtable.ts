@@ -63,7 +63,7 @@ interface EnrichedCandidate {
 }
 
 // ---------------------------------------------------------------------------
-// Formatters — convert raw data to recruiter-readable text
+// Formatters - convert raw data to recruiter-readable text
 // ---------------------------------------------------------------------------
 
 /** Format a date string like "2023-01-01" to "Jan 2023" */

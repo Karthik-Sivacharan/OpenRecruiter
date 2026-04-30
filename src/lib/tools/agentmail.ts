@@ -50,7 +50,7 @@ async function updateAirtableDraft(
 }
 
 // ---------------------------------------------------------------------------
-// agentmailCreateDrafts — batch create drafts + update Airtable
+// agentmailCreateDrafts - batch create drafts + update Airtable
 // ---------------------------------------------------------------------------
 
 const DraftCandidate = z.object({
@@ -145,7 +145,7 @@ export const agentmailCreateDrafts = tool({
 });
 
 // ---------------------------------------------------------------------------
-// agentmailSendDrafts — send drafts + update Airtable
+// agentmailSendDrafts - send drafts + update Airtable
 // ---------------------------------------------------------------------------
 
 export const agentmailSendDrafts = tool({

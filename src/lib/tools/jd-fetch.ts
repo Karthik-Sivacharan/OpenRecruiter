@@ -16,7 +16,7 @@ const JinaResponseSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// fetchJobDescription — render JS-heavy pages via Jina Reader
+// fetchJobDescription - render JS-heavy pages via Jina Reader
 // ---------------------------------------------------------------------------
 
 export const fetchJobDescription = tool({

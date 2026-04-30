@@ -16,7 +16,7 @@ Split every requirement into one of two buckets:
 | **Must-have** | API filters (Apollo/PDL) | Title, location, seniority, years of experience |
 | **Nice-to-have** | Post-enrichment scoring (Opus) | Specific skills, education prestige, company tier, GitHub quality |
 
-**Never put nice-to-haves in API filters** — they eliminate good candidates who might match on everything else.
+**Never put nice-to-haves in API filters**  - they eliminate good candidates who might match on everything else.
 
 ## Step 2: Construct Apollo Search Filters
 
@@ -31,7 +31,7 @@ Use `apollo_mixed_people_api_search` with these parameters:
   - `["San Francisco, CA", "Bay Area", "California"]`
 - **`person_seniorities`** (array): Valid values:
   - `senior`, `manager`, `director`, `vp`, `head`, `c_suite`, `partner`, `owner`, `founder`, `entry`, `intern`
-- **`q_keywords`** (string): Free-text across name, title, employer, email. Use sparingly — it's broad.
+- **`q_keywords`** (string): Free-text across name, title, employer, email. Use sparingly  - it's broad.
 - **`contact_email_status`** (array): Set to `["verified", "likely to engage"]` for contactable candidates.
 
 ### Company Filters (filter people BY their employer)
@@ -50,7 +50,7 @@ Use `apollo_mixed_people_api_search` with these parameters:
 - **`organization_job_posted_at_range`** (object): `{min: "2026-01-01"}` for recent postings.
 
 ### Pagination
-- **`per_page`**: Set to `100` (max). Default is 10 — always override this.
+- **`per_page`**: Set to `100` (max). Default is 10  - always override this.
 - **`page`**: 1-500.
 
 ## Step 3: Run Multi-Pass Searches
@@ -107,9 +107,9 @@ This is more precise than broad people search for roles like "ML Engineer at AI-
 | Scenario | Use Apollo | Use PDL |
 |----------|-----------|---------|
 | Title + location + seniority search | Yes | Overkill |
-| **Skills-based filtering** (person-level, not company) | No (can't do it) | **Yes — SQL query API** |
+| **Skills-based filtering** (person-level, not company) | No (can't do it) | **Yes  - SQL query API** |
 | **Education filtering** (school, degree, major) | No (can't do it) | **Yes** |
-| GitHub/portfolio discovery | No | **Yes — returns github_url, websites[]** |
+| GitHub/portfolio discovery | No | **Yes  - returns github_url, websites[]** |
 | Broad prospecting (100+ candidates) | Yes (free search) | Expensive (credits per result) |
 
 ### PDL SQL Query Examples

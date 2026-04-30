@@ -57,7 +57,7 @@ const OracleJobResultSchema = z.object({
 }).passthrough();
 
 // ---------------------------------------------------------------------------
-// niaWebSearch — Search the web for candidate presence
+// niaWebSearch - Search the web for candidate presence
 // ---------------------------------------------------------------------------
 
 export const niaWebSearch = tool({
@@ -303,7 +303,7 @@ function verifyResult(
 }
 
 // ---------------------------------------------------------------------------
-// searchAndSaveWebPresence — Batch web search + verify + save to Airtable
+// searchAndSaveWebPresence - Batch web search + verify + save to Airtable
 // ---------------------------------------------------------------------------
 
 export const searchAndSaveWebPresence = tool({
@@ -422,7 +422,7 @@ export const searchAndSaveWebPresence = tool({
 });
 
 // ---------------------------------------------------------------------------
-// Oracle helpers — create job + poll until complete
+// Oracle helpers - create job + poll until complete
 // ---------------------------------------------------------------------------
 
 interface OracleResult {
@@ -500,7 +500,7 @@ async function pollOracleJob(jobId: string): Promise<{
 }
 
 // ---------------------------------------------------------------------------
-// niaAnalyzeCandidates — batch Oracle research on multiple candidates
+// niaAnalyzeCandidates - batch Oracle research on multiple candidates
 // ---------------------------------------------------------------------------
 
 const CandidateInputSchema = z.object({
