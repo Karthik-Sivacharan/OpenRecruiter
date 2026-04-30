@@ -74,75 +74,136 @@ interface ApolloEnrichedPerson {
 }
 
 // ---------------------------------------------------------------------------
-// apolloSearchPeople
+// Internal: run a single Apollo search
 // ---------------------------------------------------------------------------
 
-export const apolloSearchPeople = tool({
-  description:
-    'Search for candidates matching job criteria using Apollo.io. Run multiple passes with different title variations for best coverage. Returns basic info (no emails — use apolloBulkEnrich after).',
-  inputSchema: z.object({
-    person_titles: z
-      .array(z.string())
-      .describe('Job titles to search for, e.g. ["ml engineer", "machine learning engineer"]'),
-    person_locations: z
-      .array(z.string())
-      .optional()
-      .describe('Locations like "San Francisco, CA", "Bay Area"'),
-    person_seniorities: z
-      .array(z.string())
-      .optional()
-      .describe('Seniority levels: senior, manager, director, vp, head, c_suite, entry, intern'),
-    q_keywords: z
-      .string()
-      .optional()
-      .describe('Free-text keyword search across name, title, employer'),
-    currently_using_any_of_technology_uids: z
-      .array(z.string())
-      .optional()
-      .describe('Company tech stack UIDs like pytorch, kubernetes, react, amazon_web_services'),
-    currently_using_all_of_technology_uids: z
-      .array(z.string())
-      .optional()
-      .describe('ALL of these tech UIDs must be in the company stack'),
-    organization_num_employees_ranges: z
-      .array(z.string())
-      .optional()
-      .describe('Company size ranges like "51,200", "201,500", "1001,5000"'),
-    q_organization_keyword_tags: z
-      .array(z.string())
-      .optional()
-      .describe('Industry tags like "SaaS", "fintech", "artificial intelligence"'),
-    contact_email_status: z
-      .array(z.string())
-      .optional()
-      .describe('Email status filter, e.g. ["verified", "likely to engage"]'),
-    per_page: z.number().optional().default(100).describe('Results per page, max 100'),
-    page: z.number().optional().default(1).describe('Page number, 1-indexed'),
-  }),
-  execute: async (params) => {
-    const response = await fetch(`${APOLLO_BASE}/mixed_people/api_search`, {
-      method: 'POST',
-      headers: apolloHeaders(),
-      body: JSON.stringify(params),
-    });
+interface ApolloSearchParams {
+  person_titles?: string[];
+  person_locations?: string[];
+  person_seniorities?: string[];
+  q_keywords?: string;
+  currently_using_any_of_technology_uids?: string[];
+  currently_using_all_of_technology_uids?: string[];
+  organization_num_employees_ranges?: string[];
+  q_organization_keyword_tags?: string[];
+  contact_email_status?: string[];
+  per_page?: number;
+  page?: number;
+}
 
-    if (!response.ok) {
-      return { error: `Apollo search error ${response.status}: ${await response.text()}`, total: 0, people: [] };
+interface ApolloSearchResult {
+  name: string;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  linkedin_url: string | null;
+  email: string | null;
+  apollo_id: string | null;
+}
+
+async function runApolloSearch(
+  params: ApolloSearchParams,
+): Promise<{ total: number; people: ApolloSearchResult[]; error?: string }> {
+  const response = await fetch(`${APOLLO_BASE}/mixed_people/api_search`, {
+    method: 'POST',
+    headers: apolloHeaders(),
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    return { error: `Apollo search error ${response.status}: ${await response.text()}`, total: 0, people: [] };
+  }
+
+  const data = await response.json();
+
+  return {
+    total: data.pagination?.total_entries ?? 0,
+    people: ((data.people ?? []) as ApolloSearchPerson[]).map((p) => ({
+      name: [p.first_name, p.last_name].filter(Boolean).join(' '),
+      title: p.title ?? null,
+      company: p.organization?.name ?? null,
+      location: p.city ? [p.city, p.state].filter(Boolean).join(', ') : p.country ?? null,
+      linkedin_url: p.linkedin_url ?? null,
+      email: p.email ?? null,
+      apollo_id: p.id ?? null,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// apolloMultiSearch — run multiple search passes in parallel + deduplicate
+// ---------------------------------------------------------------------------
+
+const SearchPassSchema = z.object({
+  person_titles: z
+    .array(z.string())
+    .describe('Job titles for this pass, e.g. ["ml engineer", "machine learning engineer"]'),
+  person_locations: z.array(z.string()).optional().describe('Locations'),
+  person_seniorities: z.array(z.string()).optional().describe('Seniority levels'),
+  q_keywords: z.string().optional().describe('Free-text keyword search'),
+  currently_using_any_of_technology_uids: z.array(z.string()).optional().describe('Tech stack UIDs (any)'),
+  currently_using_all_of_technology_uids: z.array(z.string()).optional().describe('Tech stack UIDs (all)'),
+  organization_num_employees_ranges: z.array(z.string()).optional().describe('Company size ranges'),
+  q_organization_keyword_tags: z.array(z.string()).optional().describe('Industry tags'),
+  contact_email_status: z.array(z.string()).optional().describe('Email status filter'),
+  per_page: z.number().optional().default(25).describe('Results per page per pass (default 25)'),
+});
+
+export const apolloMultiSearch = tool({
+  description:
+    'Run 2-3 search passes in parallel with different title/keyword variations, then deduplicate results by name+company. Returns one merged, deduplicated candidate list. Call this ONCE instead of multiple apolloSearchPeople calls.',
+  inputSchema: z.object({
+    passes: z
+      .array(SearchPassSchema)
+      .min(1)
+      .max(5)
+      .describe('Array of search configurations — each pass uses different title variations or filters'),
+  }),
+  execute: async ({ passes }) => {
+    // Run all search passes in parallel
+    const passResults = await Promise.allSettled(
+      passes.map((pass) => runApolloSearch(pass)),
+    );
+
+    // Collect all results
+    const allPeople: ApolloSearchResult[] = [];
+    const passStats: Array<{ total: number; returned: number; error?: string }> = [];
+
+    for (const pr of passResults) {
+      if (pr.status === 'fulfilled') {
+        allPeople.push(...pr.value.people);
+        passStats.push({ total: pr.value.total, returned: pr.value.people.length, error: pr.value.error });
+      } else {
+        passStats.push({
+          total: 0,
+          returned: 0,
+          error: pr.reason instanceof Error ? pr.reason.message : String(pr.reason),
+        });
+      }
     }
 
-    const data = await response.json();
+    // Deduplicate by apollo_id, then by name+company
+    const seen = new Set<string>();
+    const deduplicated: ApolloSearchResult[] = [];
+
+    for (const person of allPeople) {
+      // Primary: deduplicate by apollo_id
+      if (person.apollo_id && seen.has(person.apollo_id)) continue;
+      if (person.apollo_id) seen.add(person.apollo_id);
+
+      // Secondary: deduplicate by name+company
+      const key = `${(person.name ?? '').toLowerCase()}|${(person.company ?? '').toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      deduplicated.push(person);
+    }
 
     return {
-      total: data.pagination?.total_entries ?? 0,
-      people: ((data.people ?? []) as ApolloSearchPerson[]).map((p) => ({
-        name: [p.first_name, p.last_name].filter(Boolean).join(' '),
-        title: p.title ?? null,
-        company: p.organization?.name ?? null,
-        location: p.city ? [p.city, p.state].filter(Boolean).join(', ') : p.country ?? null,
-        linkedin_url: p.linkedin_url ?? null,
-        email: p.email ?? null,
-        apollo_id: p.id ?? null,
-      })),
+      passes: passStats,
+      total_before_dedup: allPeople.length,
+      total: deduplicated.length,
+      people: deduplicated,
     };
   },
 });

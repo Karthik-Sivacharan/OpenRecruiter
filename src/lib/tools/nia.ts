@@ -127,6 +127,301 @@ export const niaWebSearch = tool({
 });
 
 // ---------------------------------------------------------------------------
+// Internal: Airtable helpers
+// ---------------------------------------------------------------------------
+
+const AIRTABLE_API_KEY_NIA = () => process.env.AIRTABLE_API_KEY || '';
+const AIRTABLE_BASE_ID_NIA = () => process.env.AIRTABLE_BASE_ID || '';
+const AIRTABLE_TABLE_ID_NIA = () => process.env.AIRTABLE_TABLE_ID || '';
+
+function airtableUrlNia(): string {
+  return `https://api.airtable.com/v0/${AIRTABLE_BASE_ID_NIA()}/${AIRTABLE_TABLE_ID_NIA()}`;
+}
+
+function airtableHeadersNia(): Record<string, string> {
+  return {
+    Authorization: `Bearer ${AIRTABLE_API_KEY_NIA()}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+async function airtableBatchUpdateNia(
+  updates: Array<{ id: string; fields: Record<string, unknown> }>,
+): Promise<void> {
+  for (let i = 0; i < updates.length; i += 10) {
+    const batch = updates.slice(i, i + 10);
+    const response = await fetch(airtableUrlNia(), {
+      method: 'PATCH',
+      headers: airtableHeadersNia(),
+      body: JSON.stringify({ typecast: true, records: batch }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Airtable batch update error (nia): ${response.status}: ${text}`);
+    }
+  }
+}
+
+interface AirtableRecordNia {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
+async function airtableFetchByRoleNia(
+  role: string,
+  extraFilter?: string,
+): Promise<AirtableRecordNia[]> {
+  const records: AirtableRecordNia[] = [];
+  let offset: string | undefined;
+  const baseFormula = extraFilter
+    ? `AND({Role}='${role}',${extraFilter})`
+    : `{Role}='${role}'`;
+
+  do {
+    const params = new URLSearchParams({ filterByFormula: baseFormula });
+    if (offset) params.set('offset', offset);
+    const response = await fetch(`${airtableUrlNia()}?${params.toString()}`, {
+      headers: airtableHeadersNia(),
+    });
+    if (!response.ok) break;
+    const data = await response.json();
+    for (const rec of data.records ?? []) {
+      records.push({ id: rec.id, fields: rec.fields ?? {} });
+    }
+    offset = data.offset;
+  } while (offset);
+
+  return records;
+}
+
+/** Extract company names from employment history text */
+function extractCompanies(historyText: string | undefined): string[] {
+  if (!historyText) return [];
+  // Employment history format: "Title @ Company (dates)"
+  return historyText
+    .split('\n')
+    .map((line) => {
+      const match = line.match(/@ (.+?)(?:\s*\(|$)/);
+      return match?.[1]?.trim() ?? '';
+    })
+    .filter(Boolean);
+}
+
+/** Extract school names from education text */
+function extractSchools(educationText: string | undefined): string[] {
+  if (!educationText) return [];
+  // Education format: "Degree, School (dates)"
+  return educationText
+    .split('\n')
+    .map((line) => {
+      const match = line.match(/, (.+?)(?:\s*\(|$)/);
+      return match?.[1]?.trim() ?? '';
+    })
+    .filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Internal: web search for a single candidate
+// ---------------------------------------------------------------------------
+
+interface WebSearchResult {
+  url: string | null;
+  title: string | null;
+  snippet: string | null;
+}
+
+async function searchWeb(
+  query: string,
+  category?: string,
+  numResults = 5,
+): Promise<WebSearchResult[]> {
+  const body: Record<string, unknown> = {
+    mode: 'web',
+    query,
+    num_results: numResults,
+  };
+  if (category) body.category = category;
+
+  const response = await fetch(`${NIA_BASE}/search`, {
+    method: 'POST',
+    headers: niaHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const raw: unknown = await response.json();
+  const parsed = WebSearchResponseSchema.safeParse(raw);
+  if (!parsed.success) return [];
+
+  const data = parsed.data;
+  return [
+    ...data.github_repos,
+    ...data.documentation,
+    ...data.other_content,
+    ...data.results,
+  ].map((r) => ({
+    url: r.url ?? r.link ?? null,
+    title: r.title ?? null,
+    snippet: r.summary ?? r.description ?? r.snippet ?? null,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Internal: verify a search result belongs to the candidate
+// ---------------------------------------------------------------------------
+
+function verifyResult(
+  result: WebSearchResult,
+  name: string,
+  companies: string[],
+  schools: string[],
+): boolean {
+  const text = [result.title, result.snippet, result.url]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  const nameLower = name.toLowerCase();
+  const nameParts = nameLower.split(' ').filter((p) => p.length > 2);
+
+  // Check if name appears in result
+  const nameMatch = text.includes(nameLower) ||
+    nameParts.every((part) => text.includes(part));
+  if (!nameMatch) return false;
+
+  // Check if any company or school matches
+  const companyMatch = companies.some((c) => c && text.includes(c.toLowerCase()));
+  const schoolMatch = schools.some((s) => s && text.includes(s.toLowerCase()));
+  const urlContainsName = result.url
+    ? nameParts.some((part) => result.url!.toLowerCase().includes(part))
+    : false;
+
+  return companyMatch || schoolMatch || urlContainsName;
+}
+
+// ---------------------------------------------------------------------------
+// searchAndSaveWebPresence — Batch web search + verify + save to Airtable
+// ---------------------------------------------------------------------------
+
+export const searchAndSaveWebPresence = tool({
+  description:
+    'Search for online presence (GitHub, portfolio, personal site) for candidates missing these URLs. Internally fetches candidates from Airtable by role, identifies who is missing URLs, searches in parallel, verifies results, and batch-writes to Airtable. Call ONCE with just the role name and type.',
+  inputSchema: z.object({
+    role: z.string().describe('The role name (e.g. "Senior Product Designer")'),
+    role_type: z
+      .enum(['engineering', 'design', 'pm', 'other'])
+      .describe('Role type determines search query style'),
+  }),
+  execute: async ({ role, role_type }) => {
+    // 1. Fetch all candidates for this role
+    const records = await airtableFetchByRoleNia(role);
+
+    // 2. Filter to those missing Personal Website or GitHub URL
+    const candidates = records
+      .filter((r) => !r.fields['Personal Website'] || !r.fields['GitHub URL'])
+      .map((r) => {
+        const hasWebsite = Boolean(r.fields['Personal Website']);
+        const hasGithub = Boolean(r.fields['GitHub URL']);
+        const missing: 'both' | 'website' | 'github' = !hasWebsite && !hasGithub ? 'both' : !hasWebsite ? 'website' : 'github';
+        const name = (r.fields['Name'] as string) ?? 'Unknown';
+        const company = (r.fields['Current Company'] as string) ?? '';
+        const allCompanies = [company, ...extractCompanies(r.fields['Employment History'] as string | undefined)].filter(Boolean);
+        const allSchools = extractSchools(r.fields['Education'] as string | undefined);
+
+        return { record_id: r.id, name, company, allCompanies, allSchools, missing };
+      });
+
+    if (candidates.length === 0) {
+      return { total: 0, found: 0, results: [], message: 'All candidates already have web presence URLs.' };
+    }
+
+    // 3. Run all searches in parallel
+    const airtableUpdates: Array<{ id: string; fields: Record<string, unknown> }> = [];
+    const results: Array<{
+      name: string;
+      personal_website: string | null;
+      github_url: string | null;
+      status: 'found' | 'not_found' | 'error';
+    }> = [];
+
+    const searchResults = await Promise.allSettled(
+      candidates.map(async (c) => {
+        let query: string;
+        let category: string | undefined;
+        const needsWebsite = c.missing === 'both' || c.missing === 'website';
+        const needsGithub = c.missing === 'both' || c.missing === 'github';
+
+        if (role_type === 'design') {
+          query = `"${c.name}" "${c.company}" portfolio OR behance.net OR dribbble.com`;
+        } else if (role_type === 'engineering') {
+          query = `"${c.name}" "${c.company}" github.com`;
+          category = 'github';
+        } else {
+          query = `"${c.name}" "${c.company}" blog OR portfolio OR medium.com`;
+        }
+
+        const webResults = await searchWeb(query, category);
+
+        let personalWebsite: string | null = null;
+        let githubUrl: string | null = null;
+
+        for (const wr of webResults) {
+          if (!wr.url) continue;
+          if (!verifyResult(wr, c.name, c.allCompanies, c.allSchools)) continue;
+
+          if (needsGithub && !githubUrl && wr.url.includes('github.com/')) {
+            githubUrl = wr.url;
+          } else if (needsWebsite && !personalWebsite && !wr.url.includes('linkedin.com')) {
+            personalWebsite = wr.url;
+          }
+
+          if ((!needsGithub || githubUrl) && (!needsWebsite || personalWebsite)) break;
+        }
+
+        return { ...c, personalWebsite, githubUrl };
+      }),
+    );
+
+    for (let i = 0; i < searchResults.length; i++) {
+      const sr = searchResults[i];
+      const candidate = candidates[i];
+
+      if (sr.status === 'rejected') {
+        results.push({ name: candidate.name, personal_website: null, github_url: null, status: 'error' });
+        continue;
+      }
+
+      const { personalWebsite, githubUrl } = sr.value;
+      const fields: Record<string, unknown> = {};
+      if (personalWebsite) fields['Personal Website'] = personalWebsite;
+      if (githubUrl) fields['GitHub URL'] = githubUrl;
+
+      if (Object.keys(fields).length > 0) {
+        airtableUpdates.push({ id: candidate.record_id, fields });
+      }
+
+      results.push({
+        name: candidate.name,
+        personal_website: personalWebsite,
+        github_url: githubUrl,
+        status: personalWebsite || githubUrl ? 'found' : 'not_found',
+      });
+    }
+
+    // 4. Batch-write to Airtable
+    if (airtableUpdates.length > 0) {
+      await airtableBatchUpdateNia(airtableUpdates);
+    }
+
+    const found = results.filter((r) => r.status === 'found').length;
+    return { total: candidates.length, found, results };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Oracle helpers — create job + poll until complete
 // ---------------------------------------------------------------------------
 

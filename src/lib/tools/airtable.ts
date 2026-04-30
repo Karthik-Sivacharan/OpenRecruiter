@@ -249,7 +249,7 @@ export const airtableCreateCandidates = tool({
   }),
   execute: async ({ candidates, role, hiring_company, hiring_role, hiring_jd_url, hiring_job_description }) => {
     const hiring: HiringContext = { role, hiring_company, hiring_role, hiring_jd_url, hiring_job_description };
-    const createdIds: string[] = [];
+    const created: Array<{ record_id: string; name: string; linkedin_url: string | null }> = [];
     const errors: string[] = [];
 
     // Airtable batch create supports max 10 records per request
@@ -270,15 +270,20 @@ export const airtableCreateCandidates = tool({
       }
 
       const data = await response.json();
-      for (const rec of data.records ?? []) {
-        createdIds.push(rec.id);
+      for (let j = 0; j < (data.records ?? []).length; j++) {
+        const rec = data.records[j];
+        created.push({
+          record_id: rec.id,
+          name: batch[j].name ?? 'Unknown',
+          linkedin_url: batch[j].linkedin_url ?? null,
+        });
       }
     }
 
     if (errors.length > 0) {
-      return { created: createdIds.length, record_ids: createdIds, errors };
+      return { created: created.length, records: created, errors };
     }
-    return { created: createdIds.length, record_ids: createdIds };
+    return { created: created.length, records: created };
   },
 });
 
@@ -314,6 +319,61 @@ export const airtableUpdateCandidate = tool({
     const data = await response.json();
     const updated = data.records?.[0];
     return { record_id: updated?.id, fields: updated?.fields };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// airtableUpdateCandidates (batch)
+// ---------------------------------------------------------------------------
+
+export const airtableUpdateCandidates = tool({
+  description:
+    'Batch-update multiple candidate rows in Airtable in one call. Use for any bulk updates (e.g. after web search, analysis). Handles Airtable max 10-per-request batching internally.',
+  inputSchema: z.object({
+    updates: z
+      .array(
+        z.object({
+          record_id: z.string().describe('Airtable record ID (e.g. "recXXX")'),
+          fields: z
+            .record(z.string(), z.unknown())
+            .describe('Fields to update for this record'),
+        }),
+      )
+      .min(1)
+      .max(50)
+      .describe('Array of record updates'),
+  }),
+  execute: async ({ updates }) => {
+    const results: Array<{ record_id: string; status: 'updated' | 'error'; error?: string }> = [];
+
+    for (let i = 0; i < updates.length; i += 10) {
+      const batch = updates.slice(i, i + 10);
+      const records = batch.map((u) => ({ id: u.record_id, fields: u.fields }));
+
+      const response = await fetch(airtableUrl(), {
+        method: 'PATCH',
+        headers: airtableHeaders(),
+        body: JSON.stringify({ typecast: true, records }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        for (const u of batch) {
+          results.push({ record_id: u.record_id, status: 'error', error: `${response.status}: ${errText}` });
+        }
+        continue;
+      }
+
+      const data = await response.json();
+      for (const rec of data.records ?? []) {
+        results.push({ record_id: rec.id, status: 'updated' });
+      }
+    }
+
+    const updated = results.filter((r) => r.status === 'updated').length;
+    const failed = results.filter((r) => r.status === 'error').length;
+
+    return { total: updates.length, updated, failed, results };
   },
 });
 

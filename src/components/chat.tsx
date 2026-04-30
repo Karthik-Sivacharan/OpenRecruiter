@@ -68,19 +68,18 @@ export function Chat({ id, initialMessages }: ChatProps) {
       lastAssistantMessageIsCompleteWithApprovalResponses({ messages: msgs }),
   });
 
-  // Redirect from / to /chat/{id} after first message so the sidebar refetches
+  // Update URL from / to /chat/{id} after first message without remounting
+  // (router.replace would kill the active stream by remounting the component)
   useEffect(() => {
     if (
       pathname === "/" &&
       messages.length > 0 &&
-      status !== "streaming" &&
-      status !== "submitted" &&
       !hasRedirected.current
     ) {
       hasRedirected.current = true;
-      router.replace(`/chat/${id}`);
+      window.history.replaceState(null, "", `/chat/${id}`);
     }
-  }, [pathname, messages.length, status, id, router]);
+  }, [pathname, messages.length, id, router]);
 
   const isEmpty = messages.length === 0;
 

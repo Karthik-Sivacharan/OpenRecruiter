@@ -100,13 +100,21 @@ export function ChatMessages({
                     </Reasoning>
                   );
 
-                case "step-start":
-                  return i > 0 ? (
+                case "step-start": {
+                  // Only show divider if there's text content nearby (not between consecutive tool calls)
+                  if (i === 0) return null;
+                  const parts = message.parts;
+                  // Check if there's a text part before or after this step-start
+                  const hasTextBefore = parts.slice(0, i).some((p) => p.type === "text");
+                  const hasTextAfter = parts.slice(i + 1).some((p) => p.type === "text");
+                  if (!hasTextBefore && !hasTextAfter) return null;
+                  return (
                     <div
                       key={i}
                       className="my-3 border-t border-[rgba(255,255,255,0.05)]"
                     />
-                  ) : null;
+                  );
+                }
 
                 default: {
                   // Tool parts: type starts with "tool-" or is "dynamic-tool"

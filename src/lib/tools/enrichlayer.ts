@@ -141,7 +141,326 @@ function buildUrl(
 }
 
 // ---------------------------------------------------------------------------
-// enrichProfile — Fetch full profile by LinkedIn URL
+// Internal: fetch a single profile from EnrichLayer API
+// ---------------------------------------------------------------------------
+
+async function fetchEnrichProfile(
+  linkedinUrl: string,
+): Promise<{ error: string | null; profile: z.infer<typeof ProfileSchema> | null }> {
+  const params: Record<string, string | undefined> = {
+    profile_url: linkedinUrl,
+    use_cache: 'if-present',
+    skills: 'include',
+    personal_email: 'include',
+    github_profile_id: 'include',
+    twitter_profile_id: 'include',
+    extra: 'include',
+  };
+
+  const url = buildUrl('/profile', params);
+  const response = await fetch(url, { headers: enrichLayerHeaders() });
+
+  if (!response.ok) {
+    const text = await response.text();
+    return { error: `EnrichLayer profile error ${response.status}: ${text}`, profile: null };
+  }
+
+  const raw: unknown = await response.json();
+  const parsed = ProfileSchema.safeParse(raw);
+
+  if (!parsed.success) {
+    return { error: `EnrichLayer response validation failed: ${parsed.error.message}`, profile: null };
+  }
+
+  return { error: null, profile: parsed.data };
+}
+
+// ---------------------------------------------------------------------------
+// Internal: format EnrichLayer profile data into Airtable fields
+// ---------------------------------------------------------------------------
+
+function formatDatePart(d: z.infer<typeof DatePartSchema>): string {
+  if (!d) return '';
+  return d.year ? String(d.year) : '';
+}
+
+function formatProfileToAirtableFields(
+  profile: z.infer<typeof ProfileSchema>,
+  existingPersonalEmail: boolean,
+  existingAllEmails: string,
+): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+
+  // Skills
+  if (profile.skills.length > 0) {
+    fields['Skills'] = profile.skills.join(', ');
+  }
+
+  // Education
+  if (profile.education.length > 0) {
+    fields['Education'] = profile.education
+      .map((e) => {
+        const degree = e.degree_name || e.field_of_study || 'Degree';
+        const school = e.school || 'Unknown';
+        const start = formatDatePart(e.starts_at);
+        const end = formatDatePart(e.ends_at);
+        const range = start || end ? ` (${start}–${end})` : '';
+        return `${degree}, ${school}${range}`;
+      })
+      .join('\n');
+  }
+
+  // Certifications
+  if (profile.certifications.length > 0) {
+    fields['Certifications'] = profile.certifications
+      .map((c) => {
+        const name = c.name || 'Certification';
+        const authority = c.authority ? ` — ${c.authority}` : '';
+        const year = formatDatePart(c.starts_at);
+        const yearStr = year ? ` (${year})` : '';
+        return `${name}${authority}${yearStr}`;
+      })
+      .join('\n');
+  }
+
+  // EnrichLayer Experiences (separate from Apollo's Employment History)
+  if (profile.experiences.length > 0) {
+    fields['EnrichLayer Experiences'] = profile.experiences
+      .map((e) => {
+        const title = e.title || 'Role';
+        const company = e.company || 'Unknown';
+        const start = formatDatePart(e.starts_at);
+        const end = e.ends_at ? formatDatePart(e.ends_at) : 'present';
+        const range = start || end ? ` (${start}–${end})` : '';
+        let line = `${title} @ ${company}${range}`;
+        if (e.description) {
+          line += `\n  ${e.description}`;
+        }
+        return line;
+      })
+      .join('\n');
+  }
+
+  // Summary (LinkedIn About)
+  if (profile.summary) {
+    fields['Summary'] = profile.summary;
+  }
+
+  // Recommendations
+  if (profile.recommendations.length > 0) {
+    fields['Recommendations'] = profile.recommendations.join('\n\n');
+  }
+
+  // Languages
+  if (profile.languages.length > 0) {
+    fields['Languages'] = profile.languages.join(', ');
+  }
+
+  // Personal Email — only set if Apollo didn't already
+  if (!existingPersonalEmail && profile.personal_emails.length > 0) {
+    fields['Personal Email'] = profile.personal_emails[0];
+  }
+
+  // Personal Website
+  if (profile.extra?.website) {
+    fields['Personal Website'] = profile.extra.website;
+  }
+
+  // GitHub URL
+  if (profile.extra?.github_profile_id) {
+    fields['GitHub URL'] = `https://github.com/${profile.extra.github_profile_id}`;
+  }
+
+  // Photo
+  if (profile.profile_pic_url) {
+    fields['Photo'] = [{ url: profile.profile_pic_url }];
+  }
+
+  // Append new emails to All Emails
+  const existingLines = existingAllEmails ? existingAllEmails.split('\n') : [];
+  const existingEmails = new Set(existingLines.map((l) => l.split(' ')[0].toLowerCase()));
+  const newEmailLines: string[] = [];
+  for (const pe of profile.personal_emails) {
+    if (!existingEmails.has(pe.toLowerCase())) {
+      newEmailLines.push(`${pe} (personal) [enrichlayer]`);
+    }
+  }
+  if (newEmailLines.length > 0) {
+    const combined = [...existingLines, ...newEmailLines].filter(Boolean).join('\n');
+    fields['All Emails'] = combined;
+  }
+
+  return fields;
+}
+
+// ---------------------------------------------------------------------------
+// Internal: Airtable helpers
+// ---------------------------------------------------------------------------
+
+const AIRTABLE_API_KEY_EL = () => process.env.AIRTABLE_API_KEY || '';
+const AIRTABLE_BASE_ID_EL = () => process.env.AIRTABLE_BASE_ID || '';
+const AIRTABLE_TABLE_ID_EL = () => process.env.AIRTABLE_TABLE_ID || '';
+
+function airtableUrlEL(): string {
+  return `https://api.airtable.com/v0/${AIRTABLE_BASE_ID_EL()}/${AIRTABLE_TABLE_ID_EL()}`;
+}
+
+function airtableHeadersEL(): Record<string, string> {
+  return {
+    Authorization: `Bearer ${AIRTABLE_API_KEY_EL()}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+async function airtableBatchUpdate(
+  updates: Array<{ id: string; fields: Record<string, unknown> }>,
+): Promise<void> {
+  for (let i = 0; i < updates.length; i += 10) {
+    const batch = updates.slice(i, i + 10);
+    const response = await fetch(airtableUrlEL(), {
+      method: 'PATCH',
+      headers: airtableHeadersEL(),
+      body: JSON.stringify({ typecast: true, records: batch }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Airtable batch update error: ${response.status}: ${text}`);
+    }
+  }
+}
+
+interface AirtableRecord {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
+async function airtableFetchByRole(
+  role: string,
+  extraFilter?: string,
+): Promise<AirtableRecord[]> {
+  const records: AirtableRecord[] = [];
+  let offset: string | undefined;
+  const baseFormula = extraFilter
+    ? `AND({Role}='${role}',${extraFilter})`
+    : `{Role}='${role}'`;
+
+  do {
+    const params = new URLSearchParams({ filterByFormula: baseFormula });
+    if (offset) params.set('offset', offset);
+    const response = await fetch(`${airtableUrlEL()}?${params.toString()}`, {
+      headers: airtableHeadersEL(),
+    });
+    if (!response.ok) break;
+    const data = await response.json();
+    for (const rec of data.records ?? []) {
+      records.push({ id: rec.id, fields: rec.fields ?? {} });
+    }
+    offset = data.offset;
+  } while (offset);
+
+  return records;
+}
+
+// ---------------------------------------------------------------------------
+// enrichAndSaveProfiles — Self-serving: fetches candidates from Airtable by role
+// ---------------------------------------------------------------------------
+
+export const enrichAndSaveProfiles = tool({
+  description:
+    'Enrich ALL candidates for a role via EnrichLayer. Internally fetches candidates from Airtable (Pipeline Stage "Enriched" with LinkedIn URL), enriches profiles in parallel, formats data (skills, education, certs, experiences, summary, photo, GitHub, portfolio), and batch-writes back to Airtable. Call ONCE with just the role name.',
+  inputSchema: z.object({
+    role: z.string().describe('The role name to enrich candidates for (e.g. "Senior Product Designer")'),
+  }),
+  execute: async ({ role }) => {
+    // 1. Fetch candidates from Airtable that need enrichment
+    const records = await airtableFetchByRole(role, `{Pipeline Stage}='Enriched'`);
+    const candidates = records
+      .filter((r) => r.fields['LinkedIn URL'])
+      .map((r) => ({
+        record_id: r.id,
+        name: (r.fields['Name'] as string) ?? 'Unknown',
+        linkedin_url: r.fields['LinkedIn URL'] as string,
+        hasPersonalEmail: Boolean(r.fields['Personal Email']),
+        existingAllEmails: (r.fields['All Emails'] as string) ?? '',
+      }));
+
+    if (candidates.length === 0) {
+      return { total: 0, enriched: 0, failed: 0, results: [], message: 'No candidates with LinkedIn URLs found for this role.' };
+    }
+
+    // 2. Enrich all profiles in parallel
+    const enrichResults = await Promise.allSettled(
+      candidates.map(async (c) => {
+        const result = await fetchEnrichProfile(c.linkedin_url);
+        return { ...c, ...result };
+      }),
+    );
+
+    // 3. Format results and build Airtable updates
+    const airtableUpdates: Array<{ id: string; fields: Record<string, unknown> }> = [];
+    const results: Array<{
+      name: string;
+      status: 'enriched' | 'error';
+      fields_set: string[];
+      error?: string;
+    }> = [];
+
+    for (let i = 0; i < enrichResults.length; i++) {
+      const er = enrichResults[i];
+      const candidate = candidates[i];
+
+      if (er.status === 'rejected') {
+        results.push({
+          name: candidate.name,
+          status: 'error',
+          fields_set: [],
+          error: er.reason instanceof Error ? er.reason.message : String(er.reason),
+        });
+        continue;
+      }
+
+      const { profile, error } = er.value;
+      if (error || !profile) {
+        results.push({
+          name: candidate.name,
+          status: 'error',
+          fields_set: [],
+          error: error ?? 'No profile returned',
+        });
+        continue;
+      }
+
+      const fields = formatProfileToAirtableFields(
+        profile,
+        candidate.hasPersonalEmail,
+        candidate.existingAllEmails,
+      );
+
+      if (Object.keys(fields).length > 0) {
+        airtableUpdates.push({ id: candidate.record_id, fields });
+      }
+
+      results.push({
+        name: candidate.name,
+        status: 'enriched',
+        fields_set: Object.keys(fields),
+      });
+    }
+
+    // 4. Batch-write to Airtable
+    if (airtableUpdates.length > 0) {
+      await airtableBatchUpdate(airtableUpdates);
+    }
+
+    const enriched = results.filter((r) => r.status === 'enriched').length;
+    const failed = results.filter((r) => r.status === 'error').length;
+
+    return { total: candidates.length, enriched, failed, results };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// enrichProfile — Fetch full profile by LinkedIn URL (single, kept for edge cases)
 // ---------------------------------------------------------------------------
 
 export const enrichProfile = tool({

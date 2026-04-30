@@ -89,13 +89,76 @@ const ScoringResponseSchema = z.object({
   fit_rationale: z.string(),
 });
 
-const CandidateToScore = z.object({
-  record_id: z.string().describe('Airtable record ID (e.g. "recXXX")'),
-  name: z.string().describe('Candidate full name'),
-  data: z
-    .string()
-    .describe('ALL available candidate data as readable text: title, company, employment history, skills, education, certifications, experiences, summary, portfolio URL, GitHub URL, Nia analysis (if available).'),
-});
+// ---------------------------------------------------------------------------
+// Internal: fetch candidates from Airtable by role
+// ---------------------------------------------------------------------------
+
+interface AirtableRecordScoring {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
+async function airtableFetchByRoleScoring(
+  role: string,
+  extraFilter?: string,
+): Promise<AirtableRecordScoring[]> {
+  const records: AirtableRecordScoring[] = [];
+  let offset: string | undefined;
+  const baseFormula = extraFilter
+    ? `AND({Role}='${role}',${extraFilter})`
+    : `{Role}='${role}'`;
+
+  do {
+    const params = new URLSearchParams({ filterByFormula: baseFormula });
+    if (offset) params.set('offset', offset);
+    const response = await fetch(`${airtableUrl()}?${params.toString()}`, {
+      headers: airtableHeaders(),
+    });
+    if (!response.ok) break;
+    const data = await response.json();
+    for (const rec of data.records ?? []) {
+      records.push({ id: rec.id, fields: rec.fields ?? {} });
+    }
+    offset = data.offset;
+  } while (offset);
+
+  return records;
+}
+
+/** Build a readable text blob from Airtable candidate fields for Opus scoring */
+function buildCandidateDataString(fields: Record<string, unknown>): string {
+  const lines: string[] = [];
+  const add = (label: string, key: string) => {
+    const val = fields[key];
+    if (val && typeof val === 'string' && val.trim()) {
+      lines.push(`${label}: ${val}`);
+    } else if (val && typeof val === 'number') {
+      lines.push(`${label}: ${val}`);
+    }
+  };
+
+  add('Title', 'Title');
+  add('Company', 'Current Company');
+  add('Location', 'City');
+  add('Headline', 'Headline');
+  add('Employment History', 'Employment History');
+  add('EnrichLayer Experiences', 'EnrichLayer Experiences');
+  add('Skills', 'Skills');
+  add('Education', 'Education');
+  add('Certifications', 'Certifications');
+  add('Summary', 'Summary');
+  add('Languages', 'Languages');
+  add('Personal Website', 'Personal Website');
+  add('GitHub URL', 'GitHub URL');
+  add('Nia Analysis', 'Nia Analysis');
+  add('Nia Summary', 'Nia Summary');
+  add('Recommendations', 'Recommendations');
+  add('Current Company Industry', 'Current Company Industry');
+  add('Current Company Size', 'Current Company Size');
+  add('Current Company Description', 'Current Company Description');
+
+  return lines.join('\n');
+}
 
 // ---------------------------------------------------------------------------
 // Internal: score one candidate via Opus
@@ -199,13 +262,9 @@ async function updateAirtableScore(result: ScoreResult): Promise<void> {
 
 export const scoreCandidates = tool({
   description:
-    'Score ALL candidates for a role in one call. Internally calls Opus for each candidate, then updates Airtable with Fit Score + Fit Rationale + stage "Scored". Returns a summary sorted by score. Call this ONCE with all candidates after enrichment is complete.',
+    'Score ALL unscored candidates for a role. Internally fetches candidates from Airtable (Pipeline Stage "Enriched"), builds profile data, calls Opus for scoring, and writes Fit Score + Fit Rationale + stage "Scored" back to Airtable. Call ONCE with just the role name, JD, and role type.',
   inputSchema: z.object({
-    candidates: z
-      .array(CandidateToScore)
-      .min(1)
-      .max(50)
-      .describe('Array of candidates to score. Each needs record_id, name, and data (all available profile text).'),
+    role: z.string().describe('The role name (e.g. "Senior Product Designer")'),
     job_description: z
       .string()
       .describe('The full job description text or concise summary of key requirements.'),
@@ -213,12 +272,25 @@ export const scoreCandidates = tool({
       .enum(['engineering', 'design', 'pm', 'other'])
       .describe('The type of role, used to weight scoring dimensions.'),
   }),
-  execute: async ({ candidates, job_description, role_type }) => {
-    const results: ScoreResult[] = [];
+  execute: async ({ role, job_description, role_type }) => {
+    // 1. Fetch unscored candidates from Airtable
+    const records = await airtableFetchByRoleScoring(role, `{Pipeline Stage}='Enriched'`);
 
-    // Dynamic batch size: up to 10 parallel Opus calls per batch
-    // For ≤10 candidates, all run in one batch. For more, chunks of 10.
+    if (records.length === 0) {
+      return { total: 0, scored: 0, failed: 0, results: [], message: 'No unscored candidates found for this role.' };
+    }
+
+    // 2. Build candidate data from Airtable fields
+    const candidates = records.map((r) => ({
+      record_id: r.id,
+      name: (r.fields['Name'] as string) ?? 'Unknown',
+      data: buildCandidateDataString(r.fields),
+    }));
+
+    // 3. Score in parallel batches
+    const results: ScoreResult[] = [];
     const BATCH_SIZE = Math.min(10, candidates.length);
+
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
       const batch = candidates.slice(i, i + BATCH_SIZE);
       const batchResults = await Promise.allSettled(
@@ -246,7 +318,7 @@ export const scoreCandidates = tool({
       );
     }
 
-    // Sort by score descending
+    // 4. Sort by score descending
     const sorted = [...results].sort((a, b) => (b.fit_score ?? 0) - (a.fit_score ?? 0));
     const scored = results.filter((r) => r.status === 'scored').length;
     const failed = results.filter((r) => r.status === 'error').length;
@@ -256,7 +328,6 @@ export const scoreCandidates = tool({
       scored,
       failed,
       results: sorted.map((r) => ({
-        record_id: r.record_id,
         name: r.candidate_name,
         fit_score: r.fit_score,
         fit_rationale: r.fit_rationale,

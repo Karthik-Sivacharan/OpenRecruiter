@@ -27,7 +27,7 @@ export const fetchJobDescription = tool({
   }),
   execute: async ({ url }): Promise<{ title: string | null; content: string; url: string } | { error: string }> => {
     try {
-      const response = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`, {
+      const response = await fetch(`https://r.jina.ai/${url}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${JINA_API_KEY()}`,
