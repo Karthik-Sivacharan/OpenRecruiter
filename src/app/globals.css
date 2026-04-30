@@ -140,3 +140,13 @@
     font-feature-settings: "cv01", "ss03";
   }
 }
+
+.font-signature {
+  font-weight: 510;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tool-pulse {
+    animation: none;
+  }
+}

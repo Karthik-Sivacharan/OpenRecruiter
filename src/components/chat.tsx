@@ -9,7 +9,8 @@ import {
   lastAssistantMessageIsCompleteWithApprovalResponses,
   type UIMessage,
 } from "ai";
-import { motion } from "motion/react";
+
+import { motion, useReducedMotion } from "motion/react";
 import { UsersIcon } from "lucide-react";
 
 import {
@@ -43,6 +44,7 @@ export function Chat({ id, initialMessages }: ChatProps) {
   const router = useRouter();
   const pathname = usePathname();
   const hasRedirected = useRef(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const transport = new DefaultChatTransport({
     api: "/api/chat",
@@ -91,25 +93,25 @@ export function Chat({ id, initialMessages }: ChatProps) {
           {isEmpty ? (
             <div className="flex size-full flex-col items-center justify-center gap-4 p-8 text-center">
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-              >
-                <UsersIcon className="size-10 text-primary/30" strokeWidth={1.5} />
-              </motion.div>
-              <motion.h3
-                className="text-2xl font-[510] tracking-tight text-foreground"
-                initial={{ opacity: 0, y: 6 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.08, ease: [0.25, 1, 0.5, 1] }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+              >
+                <UsersIcon className="size-10 text-primary/30" />
+              </motion.div>
+              <motion.h2
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3, delay: 0.08, ease: [0.25, 1, 0.5, 1] }}
+                className="text-2xl font-signature tracking-tight text-foreground"
               >
                 What role are you hiring for?
-              </motion.h3>
+              </motion.h2>
               <motion.p
-                className="text-sm text-muted-foreground"
-                initial={{ opacity: 0, y: 6 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.15, ease: [0.25, 1, 0.5, 1] }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3, delay: 0.15, ease: [0.25, 1, 0.5, 1] }}
+                className="text-sm text-muted-foreground"
               >
                 Describe the role, paste a job description URL, or pick a suggestion below.
               </motion.p>
@@ -128,16 +130,12 @@ export function Chat({ id, initialMessages }: ChatProps) {
       {isEmpty && (
         <div className="mx-auto w-full max-w-3xl px-4 pb-2 md:px-6">
           <Suggestions className="justify-center">
-            {SUGGESTIONS.map((s, i) => (
+            {SUGGESTIONS.map((s, index) => (
               <motion.div
                 key={s}
-                initial={{ opacity: 0, y: 4 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.3,
-                  delay: 0.2 + i * 0.06,
-                  ease: [0.25, 1, 0.5, 1],
-                }}
+                transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.25, delay: 0.2 + index * 0.06, ease: [0.25, 1, 0.5, 1] }}
               >
                 <Suggestion
                   suggestion={s}

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
@@ -77,6 +77,7 @@ export const ConversationScrollButton = ({
   ...props
 }: ConversationScrollButtonProps) => {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+  const prefersReducedMotion = useReducedMotion();
 
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
@@ -86,10 +87,10 @@ export const ConversationScrollButton = ({
     <AnimatePresence>
       {!isAtBottom && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
-          transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
           className="absolute bottom-4 left-[50%] translate-x-[-50%]"
         >
           <Button

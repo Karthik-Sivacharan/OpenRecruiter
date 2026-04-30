@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatStatus, UIMessage } from "ai";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   Tool,
@@ -43,6 +43,7 @@ export function ChatMessages({
   addToolApprovalResponse,
 }: ChatMessagesProps) {
   const isStreaming = status === "streaming" || status === "submitted";
+  const prefersReducedMotion = useReducedMotion();
 
   // Detect if the agent hit the step limit (stream ended with tool calls, no final text)
   const hitStepLimit = (() => {
@@ -80,9 +81,9 @@ export function ChatMessages({
       {messages.map((message, idx) => (
         <motion.div
           key={message.id || `msg-${idx}`}
-          initial={{ opacity: 0, y: 8 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
         >
         <Message from={message.role}>
           <MessageContent>
@@ -117,8 +118,11 @@ export function ChatMessages({
                   const hasTextAfter = parts.slice(i + 1).some((p) => p.type === "text");
                   if (!hasTextBefore && !hasTextAfter) return null;
                   return (
-                    <div
+                    <motion.div
                       key={i}
+                      initial={prefersReducedMotion ? false : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.15 }}
                       className="my-3 border-t border-border"
                     />
                   );
@@ -164,9 +168,9 @@ export function ChatMessages({
 
                         {/* Approval flow for tools with needsApproval */}
                         <motion.div
-                          initial={{ opacity: 0, y: 4 }}
+                          initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
                         >
                         <Confirmation
                           approval={
@@ -238,21 +242,23 @@ export function ChatMessages({
 
       {showThinkingIndicator && (
         <motion.div
-          initial={{ opacity: 0, y: 4 }}
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
           className="flex items-center gap-3 rounded-lg bg-muted/50 border border-border px-4 py-3"
         >
-          <div className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="size-1.5 rounded-full bg-muted-foreground/50"
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-              />
-            ))}
-          </div>
+          {!prefersReducedMotion && (
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="size-1.5 rounded-full bg-muted-foreground/50"
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+                />
+              ))}
+            </div>
+          )}
           <Shimmer className="text-sm text-muted-foreground" duration={1.5}>
             Working on it...
           </Shimmer>
@@ -261,9 +267,9 @@ export function ChatMessages({
 
       {hitStepLimit && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={prefersReducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2 }}
           className="mx-auto my-4 max-w-md rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-200">
           The agent reached its processing limit for this turn. Type{" "}
           <span className="font-mono font-semibold">continue</span> to pick up

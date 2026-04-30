@@ -90,6 +90,14 @@ See `.claude/rules/recruiting-pipeline.md` for the detailed step-by-step.
 - **MCP Memory:** Dev knowledge (API quirks, architecture decisions)
 - **Auto-memory:** User preferences, project decisions, feedback
 
+## Git & Branch Rules
+
+- NEVER commit, push, merge, or delete branches without asking for permission first
+- NEVER delete worktree branches -- always keep them
+- When spawning worktree agents, instruct them to commit on their worktree branch but NOT merge or delete anything
+- After a worktree agent finishes, present the changes and ask before cherry-picking or merging onto any branch
+- Always confirm with the user before any destructive git operation (force push, reset, branch delete, worktree cleanup)
+
 ## Coding Standards
 
 See `.claude/rules/coding-standards.md` for details. Key points:
