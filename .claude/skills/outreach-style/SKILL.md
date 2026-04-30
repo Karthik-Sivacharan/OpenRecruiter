@@ -67,7 +67,7 @@ Your background in product design at Unity caught my eye for this.
 
 Interested?
 ```
-This is honest — it references real data (title, company) without inventing specifics.
+This is honest. It references real data (title, company) without inventing specifics.
 
 ## Banned Words and Phrases (NEVER use these)
 
@@ -102,7 +102,7 @@ This is honest — it references real data (title, company) without inventing sp
 
 ## Subject Lines
 
-- Format: "Role at Company" — normal capitalization, under 60 characters
+- Format: "Role at Company" - normal capitalization, under 60 characters
 - If investor info is known: "Role at Company (a16z backed)" or "Role at Company (YC W24)"
 - Good: "Senior Product Designer at ComfyUI", "Staff ML Engineer at Eragon (YC W24)", "Search Infra Lead at Kova"
 - Bad: "Exciting Opportunity!", "Job Opening", "Are you open to new roles?", "Quick question", "your gradient accumulation approach"
