@@ -194,9 +194,11 @@ const ENTITY_CONTEXT =
 // syncToTalentPool - batch tool
 // ---------------------------------------------------------------------------
 
+const TALENT_POOL_TAG = 'talent-pool';
+
 interface SyncedCandidate {
   name: string;
-  containerTag: string;
+  customId: string;
 }
 
 export const syncToTalentPool = tool({
@@ -216,7 +218,7 @@ export const syncToTalentPool = tool({
     }
 
     // 2. Partition into syncable (has LinkedIn URL) vs skipped
-    const toSync: Array<{ record: AirtableRecord; slug: string; containerTag: string }> = [];
+    const toSync: Array<{ record: AirtableRecord; slug: string; customId: string }> = [];
     let skipped = 0;
 
     for (const record of records) {
@@ -232,8 +234,8 @@ export const syncToTalentPool = tool({
         continue;
       }
 
-      const containerTag = `candidate-${slug}`.slice(0, 100);
-      toSync.push({ record, slug, containerTag });
+      const customId = `candidate-${slug}`.slice(0, 100);
+      toSync.push({ record, slug, customId });
     }
 
     if (toSync.length === 0) {
@@ -249,21 +251,22 @@ export const syncToTalentPool = tool({
       const batch = toSync.slice(i, i + BATCH_SIZE);
 
       const results = await Promise.allSettled(
-        batch.map(async ({ record, containerTag }) => {
+        batch.map(async ({ record, customId }) => {
           const profileText = buildProfileContent(record.fields);
           const linkedinUrl = record.fields['LinkedIn URL'] as string;
           const metadata = buildMetadata(record.fields, linkedinUrl, record.id);
 
           await supermemoryClient.add({
             content: profileText,
-            containerTag,
+            containerTag: TALENT_POOL_TAG,
+            customId,
             metadata,
             entityContext: ENTITY_CONTEXT,
           });
 
           return {
             name: (record.fields['Name'] as string) ?? 'Unknown',
-            containerTag,
+            customId,
             recordId: record.id,
           };
         }),
@@ -273,7 +276,7 @@ export const syncToTalentPool = tool({
         if (result.status === 'fulfilled') {
           syncedCandidates.push({
             name: result.value.name,
-            containerTag: result.value.containerTag,
+            customId: result.value.customId,
           });
           syncedRecordIds.push(result.value.recordId);
         } else {
