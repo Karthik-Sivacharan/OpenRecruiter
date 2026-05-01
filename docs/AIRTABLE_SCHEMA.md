@@ -92,11 +92,19 @@ Table Name: `Candidate Leads`
 | Hiring JD URL | url | Recruiter | Link to the job description |
 | Hiring Job Description | multilineText | JD fetch | Full JD text |
 
+### Candidate Intake & Contact
+| Field | Airtable Type | Source | Notes |
+|-------|---------------|--------|-------|
+| Phone | phoneNumber | Intake form / voice screen | Direct contact number |
+| Personal Website Password | singleLineText | Intake form | Password for portfolio sites |
+| Resume | multipleAttachments | Intake form / upload | Resume PDF attachment |
+| Intake Notes | multilineText | Intake form / voice agent / recruiter | Combined first-contact info (bio, salary range, work pref, years of experience, work auth, AI tools, referrer, roles interested, employment type) |
+
 ### Pipeline & Notes
 | Field | Airtable Type | Notes |
 |-------|---------------|-------|
-| Pipeline Stage | singleSelect | Enriched, Scored, Draft Ready, Contacted, Replied, Screened, Intro'd, Declined |
-| Recruiter Notes | multilineText | Free-form notes from the recruiter about the candidate |
+| Pipeline Stage | singleSelect | Imported, Enriched, Scored, Draft Ready, Contacted, Replied, Screened, Intro'd, Declined |
+| Recruiter Notes | multilineText | Free-form notes from the recruiter about the candidate (post-call assessment) |
 
 ### Supermemory Sync
 | Field | Airtable Type | Notes |
@@ -107,11 +115,11 @@ Table Name: `Candidate Leads`
 ### Pre-existing Fields
 | Field | Airtable Type | Notes |
 |-------|---------------|-------|
-| Attachments | multipleAttachments | Pre-existing |
+| Attachments | multipleAttachments | Pre-existing (legacy) |
 
 ## Pipeline Stages
 
-Enriched -> Scored -> Draft Ready -> Contacted -> Replied -> Screened -> Intro'd -> Declined
+Imported -> Enriched -> Scored -> Draft Ready -> Contacted -> Replied -> Screened -> Intro'd -> Declined
 
 ## Incremental Push Strategy
 
@@ -119,8 +127,9 @@ Data is pushed to Airtable after EACH enrichment step so nothing is lost:
 
 | Step | Action | Key Fields Updated | Stage Set |
 |------|--------|--------------------|-----------|
+| Manual Import | CREATE row | Name, Email, Title, Company, LinkedIn, Personal Website, Phone, Resume, Intake Notes, Personal Website Password | Imported |
 | Apollo Enrich | CREATE row | Name, Email, Title, Company, LinkedIn, Employment History, all Company fields | Enriched |
-| EnrichLayer | UPDATE row | Summary, Skills, Education, Certifications, EnrichLayer Experiences, Languages | (stays Enriched) |
+| EnrichLayer | UPDATE row | Summary, Skills, Education, Certifications, EnrichLayer Experiences, Languages | Enriched (promotes Imported -> Enriched) |
 | Web Presence | UPDATE row | Personal Website, GitHub URL (if missing) | (stays Enriched) |
 | Scoring | UPDATE row | Fit Score, Fit Rationale | Scored |
 | Email Draft | UPDATE row | Draft Email Subject, Draft Email Body, AgentMail Draft ID | Draft Ready |

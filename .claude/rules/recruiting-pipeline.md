@@ -28,7 +28,7 @@ Once recruiter approves enrichment, run the full chain. Every tool below is a SI
 
 **Step 1 -Apollo Enrich (1 credit/person):**
 1. `apolloBulkEnrich` (batches of 10, using apollo_ids) → emails, employment history, company details
-2. `airtableCreateCandidates` → CREATE rows with all Apollo data. Stage: "Enriched"
+2. `airtableCreateCandidates` → CREATE rows with all Apollo data. Stage: "Enriched" (Apollo flow) or "Imported" (manual import)
    Always include hiring context: role, hiring_company, hiring_role, hiring_jd_url, hiring_job_description
 
 **Step 2 -EnrichLayer Deep Enrich (ONE tool call, self-serving):**
@@ -130,6 +130,10 @@ Everything else runs autonomously once approved.
 | Certifications | Long text | enrichAndSaveProfiles |
 | EnrichLayer Experiences | Long text | enrichAndSaveProfiles |
 | Summary | Long text | enrichAndSaveProfiles |
+| Phone | Phone | Intake form / voice screen |
+| Personal Website Password | Text | Intake form |
+| Resume | Attachment | Intake form / upload |
+| Intake Notes | Long text | Intake form / voice agent / recruiter |
 | Fit Score | Number (1-10) | scoreCandidates (Opus) |
 | Fit Rationale | Long text | scoreCandidates (Opus) |
 | Draft Email Subject | Text | agentmailCreateDrafts |
@@ -140,7 +144,7 @@ Everything else runs autonomously once approved.
 
 ## Pipeline Stages
 
-Enriched → Scored → Draft Ready → Contacted → Replied → Screened → Intro'd → Declined
+Imported → Enriched → Scored → Draft Ready → Contacted → Replied → Screened → Intro'd → Declined
 
 ## Model Routing
 

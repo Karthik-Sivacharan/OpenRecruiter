@@ -367,13 +367,13 @@ async function airtableFetchByRole(
 
 export const enrichAndSaveProfiles = tool({
   description:
-    'Enrich ALL candidates for a role via EnrichLayer. Internally fetches candidates from Airtable (Pipeline Stage "Enriched" with LinkedIn URL), enriches profiles in parallel, formats data (skills, education, certs, experiences, summary, photo, GitHub, portfolio), and batch-writes back to Airtable. Call ONCE with just the role name.',
+    'Enrich ALL candidates for a role via EnrichLayer. Internally fetches candidates from Airtable (Pipeline Stage "Imported" or "Enriched" with LinkedIn URL), enriches profiles in parallel, formats data (skills, education, certs, experiences, summary, photo, GitHub, portfolio), sets stage to "Enriched", and batch-writes back to Airtable. Call ONCE with just the role name.',
   inputSchema: z.object({
     role: z.string().describe('The role name to enrich candidates for (e.g. "Senior Product Designer")'),
   }),
   execute: async ({ role }) => {
     // 1. Fetch candidates from Airtable that need enrichment
-    const records = await airtableFetchByRole(role, `{Pipeline Stage}='Enriched'`);
+    const records = await airtableFetchByRole(role, `OR({Pipeline Stage}='Imported',{Pipeline Stage}='Enriched')`);
     const candidates = records
       .filter((r) => r.fields['LinkedIn URL'])
       .map((r) => ({
@@ -437,6 +437,7 @@ export const enrichAndSaveProfiles = tool({
       );
 
       if (Object.keys(fields).length > 0) {
+        fields['Pipeline Stage'] = 'Enriched';
         airtableUpdates.push({ id: candidate.record_id, fields });
       }
 
