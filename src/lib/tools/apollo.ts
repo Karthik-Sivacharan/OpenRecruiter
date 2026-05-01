@@ -286,3 +286,228 @@ export const apolloBulkEnrich = tool({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Internal: Airtable helpers for self-serving Apollo match
+// ---------------------------------------------------------------------------
+
+const AIRTABLE_API_KEY = () => process.env.AIRTABLE_API_KEY || '';
+const AIRTABLE_BASE_ID = () => process.env.AIRTABLE_BASE_ID || '';
+const AIRTABLE_TABLE_ID = () => process.env.AIRTABLE_TABLE_ID || '';
+
+function airtableUrl(): string {
+  return `https://api.airtable.com/v0/${AIRTABLE_BASE_ID()}/${AIRTABLE_TABLE_ID()}`;
+}
+
+function airtableHeaders(): Record<string, string> {
+  return {
+    Authorization: `Bearer ${AIRTABLE_API_KEY()}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+interface AirtableRecordApollo {
+  id: string;
+  fields: Record<string, unknown>;
+}
+
+async function airtableFetchByRoleApollo(
+  role: string,
+  extraFilter: string,
+): Promise<AirtableRecordApollo[]> {
+  const records: AirtableRecordApollo[] = [];
+  let offset: string | undefined;
+  const baseFormula = `AND({Role}='${role}',${extraFilter})`;
+
+  do {
+    const params = new URLSearchParams({ filterByFormula: baseFormula });
+    if (offset) params.set('offset', offset);
+    const response = await fetch(`${airtableUrl()}?${params.toString()}`, {
+      headers: airtableHeaders(),
+    });
+    if (!response.ok) break;
+    const data = await response.json();
+    for (const rec of data.records ?? []) {
+      records.push({ id: rec.id, fields: rec.fields ?? {} });
+    }
+    offset = data.offset;
+  } while (offset);
+
+  return records;
+}
+
+// ---------------------------------------------------------------------------
+// Internal: format Apollo enrichment data to Airtable fields
+// ---------------------------------------------------------------------------
+
+function formatDate(date: string | null | undefined): string {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function formatEmploymentHistory(
+  history: ApolloEnrichedPerson['employment_history'],
+): string | null {
+  if (!history?.length) return null;
+  return history
+    .map((eh) => {
+      const start = formatDate(eh.start_date);
+      const end = eh.current ? 'present' : formatDate(eh.end_date);
+      const dateRange = start || end ? ` (${start}-${end})` : '';
+      return `${eh.title ?? 'Unknown Role'} @ ${eh.organization_name ?? 'Unknown'}${dateRange}`;
+    })
+    .join('\n');
+}
+
+function apolloPersonToAirtableFields(p: ApolloEnrichedPerson): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+
+  if (p.id) fields['Apollo ID'] = p.id;
+  if (p.email) fields['Email'] = p.email;
+  if (p.email_status) fields['Email Status'] = p.email_status;
+  if (p.extrapolated_email_confidence != null) {
+    fields['Email Confidence'] = String(p.extrapolated_email_confidence);
+  }
+  if (p.personal_emails?.length) fields['Personal Email'] = p.personal_emails[0];
+  if (p.headline) fields['Headline'] = p.headline;
+  if (p.seniority) fields['Seniority'] = p.seniority;
+  if (p.departments?.length) fields['Department'] = p.departments.join(', ');
+  if (p.github_url) fields['GitHub URL'] = p.github_url;
+  if (p.twitter_url) fields['Twitter URL'] = p.twitter_url;
+  if (p.photo_url) fields['Photo'] = [{ url: p.photo_url }];
+  if (p.is_likely_to_engage != null) fields['Likely to Engage'] = String(p.is_likely_to_engage);
+
+  const historyText = formatEmploymentHistory(p.employment_history);
+  if (historyText) fields['Employment History'] = historyText;
+
+  if (p.organization?.name) fields['Current Company'] = p.organization.name;
+  if (p.organization?.primary_domain) fields['Current Company Domain'] = p.organization.primary_domain;
+  if (p.organization?.industry) fields['Current Company Industry'] = p.organization.industry;
+  if (p.organization?.estimated_num_employees != null) {
+    fields['Current Company Size'] = p.organization.estimated_num_employees;
+  }
+  if (p.organization?.total_funding_printed) fields['Current Company Funding'] = p.organization.total_funding_printed;
+  if (p.organization?.latest_funding_stage) fields['Current Company Stage'] = p.organization.latest_funding_stage;
+  if (p.organization?.technology_names?.length) {
+    fields['Current Company Tech Stack'] = p.organization.technology_names.join(', ');
+  }
+  if (p.organization?.short_description) fields['Current Company Description'] = p.organization.short_description;
+
+  return fields;
+}
+
+// ---------------------------------------------------------------------------
+// apolloMatchAndEnrich - self-serving: match + enrich candidates by email/LinkedIn
+// ---------------------------------------------------------------------------
+
+export const apolloMatchAndEnrich = tool({
+  description:
+    'Match and enrich ALL candidates for a role via Apollo. Internally fetches candidates from Airtable (Pipeline Stage "Imported" or "Enriched" without Apollo ID), matches them by email + LinkedIn URL + name, and writes employment history, company details, email verification, and Apollo ID back to Airtable. Call ONCE with just the role name. Costs 1 credit per matched person.',
+  inputSchema: z.object({
+    role: z.string().describe('The role name to enrich candidates for (e.g. "Head of Design - Ninety")'),
+  }),
+  execute: async ({ role }) => {
+    // 1. Fetch candidates without Apollo ID
+    const records = await airtableFetchByRoleApollo(
+      role,
+      `AND(OR({Pipeline Stage}='Imported',{Pipeline Stage}='Enriched'),{Apollo ID}='')`,
+    );
+
+    if (records.length === 0) {
+      return { total: 0, matched: 0, failed: 0, results: [], message: 'No candidates without Apollo ID found for this role.' };
+    }
+
+    const candidates = records.map((r) => ({
+      record_id: r.id,
+      name: (r.fields['Name'] as string) ?? '',
+      email: (r.fields['Email'] as string) ?? '',
+      linkedin_url: (r.fields['LinkedIn URL'] as string) ?? '',
+      company: (r.fields['Current Company'] as string) ?? '',
+    }));
+
+    // 2. Match via Apollo in batches of 10
+    const results: Array<{ name: string; status: 'matched' | 'not_found' | 'error'; fields_set: string[] }> = [];
+
+    for (let i = 0; i < candidates.length; i += 10) {
+      const batch = candidates.slice(i, i + 10);
+
+      const details = batch.map((c) => {
+        const detail: Record<string, string> = {};
+        if (c.email) detail.email = c.email;
+        if (c.linkedin_url) detail.linkedin_url = c.linkedin_url;
+        if (c.name) {
+          detail.name = c.name;
+          const parts = c.name.split(' ');
+          if (parts.length >= 2) {
+            detail.first_name = parts[0];
+            detail.last_name = parts.slice(1).join(' ');
+          }
+        }
+        if (c.company) detail.organization_name = c.company;
+        return detail;
+      });
+
+      const response = await fetch(`${APOLLO_BASE}/people/bulk_match`, {
+        method: 'POST',
+        headers: apolloHeaders(),
+        body: JSON.stringify({ details, reveal_personal_emails: true }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`Apollo bulk_match error: ${response.status}: ${errText}`);
+        for (const c of batch) {
+          results.push({ name: c.name, status: 'error', fields_set: [] });
+        }
+        continue;
+      }
+
+      const data = await response.json();
+      const matches: (ApolloEnrichedPerson | null)[] = data.matches ?? [];
+
+      // 3. Update Airtable with matched data
+      const airtableUpdates: Array<{ id: string; fields: Record<string, unknown> }> = [];
+
+      for (let j = 0; j < batch.length; j++) {
+        const candidate = batch[j];
+        const match = matches[j] ?? null;
+
+        if (!match || !match.id) {
+          results.push({ name: candidate.name, status: 'not_found', fields_set: [] });
+          continue;
+        }
+
+        const fields = apolloPersonToAirtableFields(match);
+        if (Object.keys(fields).length > 0) {
+          airtableUpdates.push({ id: candidate.record_id, fields });
+        }
+        results.push({ name: candidate.name, status: 'matched', fields_set: Object.keys(fields) });
+      }
+
+      // Batch update Airtable
+      if (airtableUpdates.length > 0) {
+        const updateRes = await fetch(airtableUrl(), {
+          method: 'PATCH',
+          headers: airtableHeaders(),
+          body: JSON.stringify({ records: airtableUpdates, typecast: true }),
+        });
+        if (!updateRes.ok) {
+          console.error(`Airtable update error: ${updateRes.status}: ${await updateRes.text()}`);
+        }
+      }
+
+      // Rate limit pause between batches
+      if (i + 10 < candidates.length) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+
+    const matched = results.filter((r) => r.status === 'matched').length;
+    const notFound = results.filter((r) => r.status === 'not_found').length;
+    const failed = results.filter((r) => r.status === 'error').length;
+
+    return { total: candidates.length, matched, not_found: notFound, failed, results };
+  },
+});

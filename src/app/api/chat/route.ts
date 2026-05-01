@@ -12,7 +12,7 @@ import {
 import { tool } from 'ai';
 import { z } from 'zod';
 import { saveChat, updateChatMeta } from '@/lib/db/queries';
-import { apolloMultiSearch, apolloBulkEnrich } from '@/lib/tools/apollo';
+import { apolloMultiSearch, apolloBulkEnrich, apolloMatchAndEnrich } from '@/lib/tools/apollo';
 import {
   airtableCreateCandidates,
   airtableUpdateCandidates,
@@ -191,6 +191,7 @@ export async function POST(req: Request) {
       // Apollo tools
       apolloMultiSearch,
       apolloBulkEnrich,
+      apolloMatchAndEnrich,
 
       // EnrichLayer tools
       enrichAndSaveProfiles,
