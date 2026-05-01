@@ -147,6 +147,7 @@ function buildCandidateDataString(fields: Record<string, unknown>): string {
   add('Education', 'Education');
   add('Certifications', 'Certifications');
   add('Summary', 'Summary');
+  add('Intake Notes', 'Intake Notes');
   add('Languages', 'Languages');
   add('Personal Website', 'Personal Website');
   add('GitHub URL', 'GitHub URL');
@@ -158,6 +159,20 @@ function buildCandidateDataString(fields: Record<string, unknown>): string {
   add('Current Company Description', 'Current Company Description');
 
   return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Internal: extract resume PDF URL from Airtable attachment field
+// ---------------------------------------------------------------------------
+
+function extractResumeUrl(fields: Record<string, unknown>): string | undefined {
+  const resume = fields['Resume'];
+  if (!Array.isArray(resume) || resume.length === 0) return undefined;
+  const first = resume[0];
+  if (typeof first === 'object' && first !== null && 'url' in first) {
+    return (first as { url: string }).url;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +188,7 @@ interface ScoreResult {
 }
 
 async function scoreOne(
-  candidate: { record_id: string; name: string; data: string },
+  candidate: { record_id: string; name: string; data: string; resumeUrl?: string },
   jobDescription: string,
   roleType: string,
 ): Promise<ScoreResult> {
@@ -188,10 +203,29 @@ ${candidate.data}
 Score this candidate's fit for the role. Respond with JSON only.`;
 
   try {
+    const content: Array<
+      | { type: 'file'; data: Buffer; mediaType: 'application/pdf' }
+      | { type: 'text'; text: string }
+    > = [];
+
+    if (candidate.resumeUrl) {
+      try {
+        const pdfRes = await fetch(candidate.resumeUrl);
+        if (pdfRes.ok) {
+          const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+          content.push({ type: 'file', data: pdfBuffer, mediaType: 'application/pdf' as const });
+        }
+      } catch {
+        // Resume fetch failed, continue without it
+      }
+    }
+
+    content.push({ type: 'text', text: userPrompt });
+
     const result = await generateText({
       model: anthropic(SCORING_MODEL()),
       system: SCORING_RUBRIC,
-      prompt: userPrompt,
+      messages: [{ role: 'user', content }],
       maxOutputTokens: 1024,
     });
 
@@ -285,6 +319,7 @@ export const scoreCandidates = tool({
       record_id: r.id,
       name: (r.fields['Name'] as string) ?? 'Unknown',
       data: buildCandidateDataString(r.fields),
+      resumeUrl: extractResumeUrl(r.fields),
     }));
 
     // 3. Score in parallel batches
