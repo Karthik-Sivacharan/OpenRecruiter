@@ -300,3 +300,156 @@ export const syncToTalentPool = tool({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Name/title extraction from Supermemory document title
+// ---------------------------------------------------------------------------
+
+function parseDocTitle(docTitle: string): { name: string; title: string } {
+  const cleaned = docTitle.replace(/^Candidate Profile:\s*/i, '');
+  const commaIdx = cleaned.indexOf(',');
+  if (commaIdx === -1) return { name: cleaned.trim(), title: '' };
+  return {
+    name: cleaned.slice(0, commaIdx).trim(),
+    title: cleaned.slice(commaIdx + 1).trim(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Search result types
+// ---------------------------------------------------------------------------
+
+interface TalentPoolResult {
+  name: string;
+  title: string;
+  role: string;
+  hiring_company: string;
+  fit_score: string;
+  stage: string;
+  score: number;
+  airtable_record_id: string;
+  linkedin_url: string;
+  matching_memories: string[];
+}
+
+interface TalentPoolSearchResponse {
+  results: TalentPoolResult[];
+  total: number;
+  timing_ms: number;
+  message?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Group search results by candidate linkedin_url
+// ---------------------------------------------------------------------------
+
+interface MemoryHit {
+  memory?: string;
+  similarity: number;
+  metadata: Record<string, unknown> | null;
+  documents?: Array<{ title?: string; metadata?: Record<string, unknown> | null }>;
+}
+
+function groupMemoriesByCandidate(
+  memories: MemoryHit[],
+): Map<string, TalentPoolResult> {
+  const grouped = new Map<string, TalentPoolResult>();
+
+  for (const hit of memories) {
+    const meta = hit.metadata ?? {};
+    const linkedinUrl = typeof meta.linkedin_url === 'string' ? meta.linkedin_url : '';
+    const key = linkedinUrl || `unknown-${grouped.size}`;
+    const similarity = hit.similarity;
+    const snippet = typeof hit.memory === 'string' ? hit.memory : '';
+
+    const existing = grouped.get(key);
+
+    if (existing) {
+      if (similarity > existing.score) {
+        existing.score = similarity;
+      }
+      if (existing.matching_memories.length < 3 && snippet) {
+        existing.matching_memories.push(snippet);
+      }
+    } else {
+      const docTitleStr = hit.documents?.[0]?.title ?? '';
+      const parsed = parseDocTitle(docTitleStr);
+
+      const metaStr = (field: string): string => {
+        const val = meta[field];
+        return typeof val === 'string' ? val : '';
+      };
+
+      grouped.set(key, {
+        name: parsed.name || metaStr('name') || 'Unknown',
+        title: parsed.title,
+        role: metaStr('role'),
+        hiring_company: metaStr('hiring_company'),
+        fit_score: metaStr('fit_score'),
+        stage: metaStr('stage'),
+        score: similarity,
+        airtable_record_id: metaStr('airtable_record_id'),
+        linkedin_url: linkedinUrl,
+        matching_memories: snippet ? [snippet] : [],
+      });
+    }
+  }
+
+  return grouped;
+}
+
+// ---------------------------------------------------------------------------
+// searchTalentPool - query the talent pool for cross-role matching
+// ---------------------------------------------------------------------------
+
+export const searchTalentPool = tool({
+  description:
+    'Search the talent pool for candidates matching a job description or query. Returns past candidates who could be relevant for a new role. Call this during intake after fetching the JD, or when the recruiter asks about their candidate pool.',
+  inputSchema: z.object({
+    query: z.string().describe('Job description summary or natural language query (e.g. "backend engineer with Go and distributed systems experience")'),
+  }),
+  execute: async ({ query }): Promise<TalentPoolSearchResponse> => {
+    const startMs = Date.now();
+
+    try {
+      const client = new Supermemory();
+
+      const results = await client.search.memories({
+        q: query,
+        containerTag: TALENT_POOL_TAG,
+        threshold: 0.3,
+        limit: 20,
+        include: { documents: true },
+      });
+
+      const hits = results.results ?? [];
+
+      if (hits.length === 0) {
+        return {
+          results: [],
+          total: 0,
+          timing_ms: Date.now() - startMs,
+          message: 'No matching candidates found in your talent pool.',
+        };
+      }
+
+      const grouped = groupMemoriesByCandidate(hits);
+      const sorted = Array.from(grouped.values()).sort((a, b) => b.score - a.score);
+
+      return {
+        results: sorted,
+        total: sorted.length,
+        timing_ms: Date.now() - startMs,
+      };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`Supermemory search error: ${message}`);
+      return {
+        results: [],
+        total: 0,
+        timing_ms: Date.now() - startMs,
+        message: `Talent pool search failed: ${message}`,
+      };
+    }
+  },
+});
