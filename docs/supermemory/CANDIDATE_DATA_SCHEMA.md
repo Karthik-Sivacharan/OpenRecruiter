@@ -43,6 +43,7 @@ Fit Score: 8/10
 Fit Rationale: Strong ML infrastructure background, experience with financial data at Stripe. Gap: no direct payments fraud experience.
 Pipeline Stage: Draft Ready
 Recruiter Notes: Had a call - very strong communicator. Wants to stay remote. Exploring AI startups specifically. Said Q2 2026 timing works better.
+Intake Notes: 8 years experience, prefers remote/hybrid, authorized to work in US, interested in senior IC roles at AI startups, referred by John Smith. Salary expectation: $220-250K base.
 ```
 
 ### Metadata (structured, filterable, propagates to every extracted memory)
@@ -84,6 +85,9 @@ Max 1500 characters. Set once per container tag.
 | Nia Analysis | Too long (5K+ chars), would blow token budget |
 | Current Company Description | Marginal value, high token cost |
 | Hiring Job Description | Same JD repeated for every candidate in a role |
+| Phone | PII, not useful for matching |
+| Personal Website Password | Sensitive credential, not useful for matching |
+| Resume (attachment) | Attachment type, can't send as text. Content overlaps with enriched data. Skip for now. |
 
 ## Token Budget
 

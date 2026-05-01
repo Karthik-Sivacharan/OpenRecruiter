@@ -136,6 +136,7 @@ function buildProfileContent(fields: Record<string, unknown>): string {
   addCtx('Fit Rationale', 'Fit Rationale');
   addCtx('Pipeline Stage', 'Pipeline Stage');
   addCtx('Recruiter Notes', 'Recruiter Notes');
+  addCtx('Intake Notes', 'Intake Notes');
 
   if (contextLines.length > 0) {
     lines.push('');
