@@ -13,6 +13,10 @@ export default async function ChatPage({
   if (!conversation) notFound();
 
   return (
-    <Chat id={id} initialMessages={conversation.messages as UIMessage[]} />
+    <Chat
+      id={id}
+      initialMessages={conversation.messages as UIMessage[]}
+      initialUseTalentPool={conversation.useTalentPool}
+    />
   );
 }

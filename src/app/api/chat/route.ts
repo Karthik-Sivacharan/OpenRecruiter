@@ -11,7 +11,7 @@ import {
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import { saveChat, updateChatMeta } from '@/lib/db/queries';
+import { saveChat, updateChatMeta, getChatTalentPoolFlag } from '@/lib/db/queries';
 import { apolloMultiSearch, apolloBulkEnrich, apolloMatchAndEnrich } from '@/lib/tools/apollo';
 import {
   airtableCreateCandidates,
@@ -25,14 +25,26 @@ import { searchAndSaveWebPresence } from '@/lib/tools/nia';
 import { scoreCandidates } from '@/lib/tools/scoring';
 import { fetchJobDescription } from '@/lib/tools/jd-fetch';
 import { agentmailCreateDrafts, agentmailSendDrafts } from '@/lib/tools/agentmail';
+import { searchTalentPool, syncToTalentPool } from '@/lib/tools/talent-pool';
 import { getRecruiter } from '@/lib/config/recruiters';
 import { OUTREACH_STYLE } from '@/lib/prompts/outreach-style';
 import { ANTI_SLOP } from '@/lib/prompts/anti-slop';
 
-function buildSystemPrompt(): string {
+function buildSystemPrompt(useTalentPool: boolean): string {
   const r = getRecruiter();
-  return `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
+  const talentPoolBlock = useTalentPool
+    ? `
+## Talent Pool Search (ENABLED)
+Before sourcing new candidates, search the talent pool using the searchTalentPool tool.
+After reading the JD and before asking follow-up questions, call searchTalentPool with a query derived from the key requirements (e.g. "senior backend engineer with Go and distributed systems experience in San Francisco").
+If matches are found, present them to the recruiter: "I found X candidates from previous roles that could be a fit" with a summary table (Name, Title, Company, Previous Role, Fit Score).
+The recruiter can choose to include these candidates in the current pipeline or skip them.
+At the end of the pipeline (after scoring or after outreach drafts are created), offer to sync new candidates to the talent pool using syncToTalentPool.
+`
+    : '';
 
+  return `You are OpenRecruiter, an autonomous AI recruiting agent. You run a 5-phase pipeline:
+${talentPoolBlock}
 **Communication style:**
 - Be a recruiting partner, not a silent script. Speak at natural checkpoints.
 - After fetching a JD: share a summary of the role before anything else.
@@ -153,13 +165,16 @@ export async function POST(req: Request) {
     await saveChat(chatId, messages);
   }
 
+  // Read the talent pool toggle from the DB (persisted by the client toggle)
+  const useTalentPool = chatId ? await getChatTalentPoolFlag(chatId) : false;
+
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
     model: anthropic(
       process.env.MODEL_ORCHESTRATOR || 'claude-sonnet-4-6',
     ),
-    system: buildSystemPrompt(),
+    system: buildSystemPrompt(useTalentPool),
     messages: modelMessages,
 
     // Context management (free) - Anthropic clears old tool results when context
@@ -208,6 +223,10 @@ export async function POST(req: Request) {
       // Outreach (AgentMail)
       agentmailCreateDrafts,
       agentmailSendDrafts,
+
+      // Talent pool (Supermemory)
+      searchTalentPool,
+      syncToTalentPool,
 
       // Airtable tools
       airtableCreateCandidates,

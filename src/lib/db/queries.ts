@@ -62,15 +62,27 @@ export async function listChats(): Promise<
     .orderBy(desc(conversations.updatedAt));
 }
 
-/** Update conversation metadata (role name, Airtable table ID) */
+/** Update conversation metadata (role name, Airtable table ID, talent pool toggle) */
 export async function updateChatMeta(
   id: string,
-  fields: { roleName?: string; airtableTableId?: string },
+  fields: { roleName?: string; airtableTableId?: string; useTalentPool?: boolean },
 ): Promise<void> {
   const set: Record<string, unknown> = { updatedAt: sql`now()` };
   if (fields.roleName !== undefined) set.roleName = fields.roleName;
   if (fields.airtableTableId !== undefined)
     set.airtableTableId = fields.airtableTableId;
+  if (fields.useTalentPool !== undefined)
+    set.useTalentPool = fields.useTalentPool;
 
   await db.update(conversations).set(set).where(eq(conversations.id, id));
+}
+
+/** Get the talent pool toggle state for a conversation */
+export async function getChatTalentPoolFlag(id: string): Promise<boolean> {
+  const rows = await db
+    .select({ useTalentPool: conversations.useTalentPool })
+    .from(conversations)
+    .where(eq(conversations.id, id))
+    .limit(1);
+  return rows[0]?.useTalentPool ?? false;
 }

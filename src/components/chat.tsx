@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -27,6 +27,15 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
 import { ChatMessages } from "@/components/chat-messages";
 
 const SUGGESTIONS = [
@@ -38,13 +47,15 @@ const SUGGESTIONS = [
 interface ChatProps {
   id: string;
   initialMessages?: UIMessage[];
+  initialUseTalentPool?: boolean;
 }
 
-export function Chat({ id, initialMessages }: ChatProps) {
+export function Chat({ id, initialMessages, initialUseTalentPool = false }: ChatProps) {
   const router = useRouter();
   const pathname = usePathname();
   const hasRedirected = useRef(false);
   const prefersReducedMotion = useReducedMotion();
+  const [useTalentPool, setUseTalentPool] = useState(initialUseTalentPool);
 
   const transport = new DefaultChatTransport({
     api: "/api/chat",
@@ -83,6 +94,19 @@ export function Chat({ id, initialMessages }: ChatProps) {
       window.history.replaceState(null, "", `/chat/${id}`);
     }
   }, [pathname, messages.length, id, router]);
+
+  // Persist talent pool toggle to DB
+  const handleToggleTalentPool = useCallback(
+    (pressed: boolean) => {
+      setUseTalentPool(pressed);
+      fetch("/api/conversations/talent-pool", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: id, useTalentPool: pressed }),
+      }).catch((err) => console.error("Failed to persist talent pool toggle:", err));
+    },
+    [id],
+  );
 
   const isEmpty = messages.length === 0;
 
@@ -155,7 +179,30 @@ export function Chat({ id, initialMessages }: ChatProps) {
         >
           <PromptInputTextarea placeholder="Describe the role you're hiring for..." />
           <PromptInputFooter>
-            <PromptInputTools />
+            <div className="flex items-center gap-1">
+              <PromptInputTools />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex items-center gap-1.5" />}>
+                    <Switch
+                      size="sm"
+                      checked={useTalentPool}
+                      onCheckedChange={handleToggleTalentPool}
+                      aria-label="Toggle talent pool search"
+                    />
+                    <span className={cn(
+                      "text-xs select-none",
+                      useTalentPool ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      Supermemory
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Search past candidates from your talent pool before sourcing new ones
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <PromptInputSubmit status={status} onStop={stop} />
           </PromptInputFooter>
         </PromptInput>
