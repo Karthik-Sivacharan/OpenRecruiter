@@ -35,64 +35,49 @@ The candidate profile is organized into labeled sections:
 - **Self-Reported Data** comes from the candidate's own application (intake form, resume). Cross-reference against verified data when possible.
 - **Web Presence** includes GitHub, portfolio, and analysis data
 - **Missing Data** explicitly lists what information was not available. Do NOT penalize for missing data unless the JD specifically requires it (e.g. a portfolio for design roles). Note it as a gap, not a disqualifier.
-- **Candidate Source** tells you if the candidate applied (INBOUND) or was sourced (OUTBOUND). Inbound candidates self-selected for this role, which is a positive signal.
+- **Candidate Source** tells you if the candidate applied (INBOUND) or was sourced (OUTBOUND).
 
 If the candidate has a Resume PDF attached, review it for additional context not captured in the structured fields.
 
 ## Scoring Dimensions
 
-Evaluate each dimension and weight them based on the role type:
+### OUTBOUND candidates (sourced, no self-reported data)
+Evaluate on these core dimensions, weighted by role type:
 
-### For Engineering Roles (weight accordingly)
+**Engineering:** Technical skill overlap (30%), Experience depth (25%), Code quality/GitHub (20%), Company trajectory (15%), Location/logistics (10%)
+**Design:** Portfolio/work quality (35%), Tool/skill overlap (25%), Experience depth (20%), Company trajectory (10%), Location/logistics (10%)
+**PM/Other:** Domain expertise (30%), Experience depth (25%), Skill overlap (20%), Company trajectory (15%), Location/logistics (10%)
+
+### INBOUND candidates (applied, have self-reported data)
+Use the same core dimensions as above, but re-weight to make room for alignment factors. The core dimensions above should total 80% (scale each proportionally). The remaining 20% covers:
+
 | Dimension | Weight | What to Evaluate |
 |-----------|--------|-----------------|
-| Technical skill overlap | 30% | Skills match JD requirements. Exact matches > adjacent skills. |
-| Experience depth | 25% | Years in domain, seniority progression, scope of past work. |
-| Code quality (GitHub/portfolio) | 20% | If analysis data exists: code organization, testing, documentation. If no data: note it. |
-| Company trajectory | 15% | Caliber of past employers, industry relevance, growth trajectory. |
-| Location/logistics | 10% | Location match, remote compatibility, visa considerations. |
+| Salary alignment | 10% | Does their expected comp match the JD range? >30% gap = score 2-3 on this dimension. Within range = 8-10. No data = skip, do not penalize. |
+| Work authorization + logistics | 10% | Does their work auth match JD requirements? Is their work preference (remote/hybrid/onsite) compatible? Mismatch on work auth when JD requires it = score 1-2 on this dimension. |
 
-### For Design Roles (weight accordingly)
-| Dimension | Weight | What to Evaluate |
-|-----------|--------|-----------------|
-| Portfolio/work quality | 35% | Design quality signals from portfolio, case studies, or Nia analysis if available. |
-| Tool/skill overlap | 25% | Skills and tools matching JD requirements. |
-| Experience depth | 20% | Years in domain, seniority, scope of design work. |
-| Company trajectory | 10% | Quality of past employers, B2B/B2C relevance. |
-| Location/logistics | 10% | Location match, remote compatibility. |
+Inbound candidates self-selected for this role - that intent is a modest positive signal. Factor it into your overall assessment but don't inflate the score for intent alone.
 
-### For PM/Other Roles (weight accordingly)
-| Dimension | Weight | What to Evaluate |
-|-----------|--------|-----------------|
-| Domain expertise | 30% | Relevant industry and product experience. |
-| Experience depth | 25% | Years, seniority, scope of past work. |
-| Skill overlap | 20% | Skills matching JD requirements. |
-| Company trajectory | 15% | Quality and relevance of past employers. |
-| Location/logistics | 10% | Location match, remote compatibility. |
-
-## Additional Scoring Factors (for INBOUND candidates with Self-Reported Data)
-
-If the candidate provided salary expectations, work authorization, or other preferences via their application, evaluate:
-- **Salary alignment**: Does their expected range fall within the JD's comp range? Major misalignment (>30% gap) is a yellow flag.
-- **Work authorization**: If the JD requires specific authorization (e.g. US work authorization) and the candidate's status doesn't match, note it prominently.
-- **Role alignment**: Are the roles they're interested in aligned with this position?
+### Handling missing or thin data
+- If GitHub/portfolio data is missing: note it as a gap. For design roles where portfolio is 35% of core, estimate based on other signals (company caliber, title progression, skills listed). Do not assign 0 - assign your best estimate with lower confidence noted in the rationale.
+- If Self-Reported Data conflicts with Verified Data (e.g. different years of experience), flag the discrepancy in the rationale.
 
 ## Score Definitions
 
-| Score | Meaning | Action |
-|-------|---------|--------|
-| 9-10 | Exceptional match. Nearly all requirements met. Strong signals. | Outreach immediately. |
-| 7-8 | Strong match. Most requirements met. Solid evidence of relevant work. | Outreach recommended. |
-| 5-6 | Moderate match. Some requirements met. Worth considering. | Outreach if pipeline is thin. |
-| 3-4 | Weak match. Few requirements met. Missing key skills. | Skip unless recruiter insists. |
-| 1-2 | Not a match. Wrong domain, level, or disqualifying gaps. | Do not outreach. |
+| Score | Meaning |
+|-------|---------|
+| 9-10 | Exceptional match. Nearly all requirements met. Strong signals across dimensions. |
+| 7-8 | Strong match. Most requirements met. Solid evidence of relevant work. |
+| 5-6 | Moderate match. Some requirements met but notable gaps. Worth considering. |
+| 3-4 | Weak match. Few requirements met. Missing key skills or major misalignment. |
+| 1-2 | Not a match. Wrong domain, level, or disqualifying gaps (e.g. work auth mismatch). |
 
 ## Output Format
 
 You MUST respond with ONLY valid JSON in this exact format:
 {
   "fit_score": <number 1-10>,
-  "fit_rationale": "<3-5 sentences: overall assessment, key strengths, key gaps, and recommendation>"
+  "fit_rationale": "<3-5 sentences: overall assessment, key strengths, key gaps, and recommendation. For INBOUND candidates, always mention salary and work auth alignment if data is available.>"
 }
 
 Do NOT include any text outside the JSON object.`;
@@ -319,8 +304,12 @@ function buildStructuredCandidateProfile(fields: Record<string, unknown>): strin
   };
 
   // --- Candidate source ---
-  const stage = str('Pipeline Stage');
-  const isInbound = stage === 'Imported';
+  // Inbound detection: candidates who applied have Intake Notes (from intake form).
+  // We can't rely on Pipeline Stage because enrichment changes 'Imported' to 'Enriched'
+  // before scoring runs. Intake Notes presence is a stable signal that never gets overwritten.
+  const hasIntakeNotes = Boolean(str('Intake Notes'));
+  const hasResume = Array.isArray(fields['Resume']) && (fields['Resume'] as unknown[]).length > 0;
+  const isInbound = hasIntakeNotes || hasResume;
   sections.push(
     isInbound
       ? '## Candidate Source: INBOUND (applied via intake form)'
