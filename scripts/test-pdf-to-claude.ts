@@ -93,14 +93,14 @@ ${intakeNotes}`,
         ],
       },
     ],
-    maxTokens: 500,
+    maxOutputTokens: 500,
   });
 
   console.log('\n4. Claude response:');
   console.log('---');
   console.log(result.text);
   console.log('---');
-  console.log(`\nTokens used: ${result.usage.promptTokens} input, ${result.usage.completionTokens} output`);
+  console.log(`\nTokens used: ${result.usage.inputTokens} input, ${result.usage.outputTokens} output`);
   console.log('\nDry test PASSED - PDF-to-Claude via AI SDK works!');
 }
 
