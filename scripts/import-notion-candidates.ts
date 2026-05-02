@@ -190,30 +190,81 @@ function mapRow(row: Record<string, string>): AirtableRecord | null {
 // Airtable API
 // ---------------------------------------------------------------------------
 
-async function fetchExistingNames(): Promise<Set<string>> {
-  const names = new Set<string>();
+/**
+ * Normalize a LinkedIn URL for dedup comparison:
+ * - lowercase
+ * - strip trailing slashes
+ * - remove query params and fragments
+ * e.g. "https://LinkedIn.com/in/JohnDoe/?ref=foo" -> "https://linkedin.com/in/johndoe"
+ */
+function normalizeLinkedInForDedup(url: string): string {
+  let cleaned = url.trim().toLowerCase();
+  if (!cleaned) return '';
+  try {
+    const parsed = new URL(cleaned.startsWith('http') ? cleaned : `https://${cleaned}`);
+    // Reconstruct without query params or hash
+    cleaned = `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`;
+  } catch {
+    // If URL parsing fails, just use the lowercased string
+  }
+  // Remove trailing slashes
+  return cleaned.replace(/\/+$/, '');
+}
+
+/**
+ * Normalize an email for dedup comparison: lowercase + trim.
+ */
+function normalizeEmailForDedup(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+interface ExistingCandidates {
+  linkedinUrls: Set<string>;
+  emails: Set<string>;
+}
+
+/**
+ * Fetch all existing candidates from Airtable and collect their
+ * LinkedIn URLs and emails into Sets for fast duplicate lookup.
+ * Paginates through all records (not filtered by role, so dedup is global).
+ */
+async function fetchExistingCandidates(): Promise<ExistingCandidates> {
+  const linkedinUrls = new Set<string>();
+  const emails = new Set<string>();
   let offset: string | undefined;
 
   do {
-    const params = new URLSearchParams({
-      filterByFormula: `{Role}='${HIRING_CONTEXT.Role}'`,
-      'fields[]': 'Name',
-    });
+    // Request both LinkedIn URL and Email fields for dedup matching
+    const params = new URLSearchParams();
+    params.append('fields[]', 'LinkedIn URL');
+    params.append('fields[]', 'Email');
     if (offset) params.set('offset', offset);
 
     const res = await fetch(`${AIRTABLE_URL}?${params}`, {
       headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` },
     });
-    if (!res.ok) break;
-    const data = await res.json();
+    if (!res.ok) {
+      console.error(`   Warning: failed to fetch existing candidates (${res.status})`);
+      break;
+    }
+    const data = await res.json() as {
+      records?: Array<{ fields?: { 'LinkedIn URL'?: string; Email?: string } }>;
+      offset?: string;
+    };
     for (const rec of data.records ?? []) {
-      const name = rec.fields?.Name;
-      if (typeof name === 'string') names.add(name.trim());
+      const linkedinUrl = rec.fields?.['LinkedIn URL'];
+      if (typeof linkedinUrl === 'string' && linkedinUrl.trim()) {
+        linkedinUrls.add(normalizeLinkedInForDedup(linkedinUrl));
+      }
+      const email = rec.fields?.Email;
+      if (typeof email === 'string' && email.trim()) {
+        emails.add(normalizeEmailForDedup(email));
+      }
     }
     offset = data.offset;
   } while (offset);
 
-  return names;
+  return { linkedinUrls, emails };
 }
 
 async function pushBatch(records: AirtableRecord[]): Promise<number> {
@@ -268,21 +319,41 @@ async function main() {
 
   console.log(`   Mapped ${records.length} candidates (${skippedEmpty.length} skipped - empty name)`);
 
-  // 3. Check for duplicates
+  // 3. Check for duplicates by LinkedIn URL or email
   console.log('\n2. Checking for existing candidates in Airtable...');
-  const existingNames = await fetchExistingNames();
-  console.log(`   Found ${existingNames.size} existing candidates for role "${HIRING_CONTEXT.Role}"`);
+  const existing = await fetchExistingCandidates();
+  console.log(`   Found ${existing.linkedinUrls.size} LinkedIn URLs and ${existing.emails.size} emails in Airtable`);
 
+  let skippedDuplicates = 0;
   const newRecords = records.filter((r) => {
     const name = r.fields['Name'] as string;
-    if (existingNames.has(name)) {
-      console.log(`   Skipping duplicate: ${name}`);
-      return false;
+
+    // Check LinkedIn URL match (primary dedup key)
+    const linkedinRaw = r.fields['LinkedIn URL'] as string | undefined;
+    if (linkedinRaw) {
+      const normalizedLinkedin = normalizeLinkedInForDedup(linkedinRaw);
+      if (normalizedLinkedin && existing.linkedinUrls.has(normalizedLinkedin)) {
+        console.log(`   Skipping ${name} - already exists (matched on LinkedIn URL)`);
+        skippedDuplicates++;
+        return false;
+      }
     }
+
+    // Check email match (secondary dedup key)
+    const emailRaw = r.fields['Email'] as string | undefined;
+    if (emailRaw) {
+      const normalizedEmail = normalizeEmailForDedup(emailRaw);
+      if (normalizedEmail && existing.emails.has(normalizedEmail)) {
+        console.log(`   Skipping ${name} - already exists (matched on email)`);
+        skippedDuplicates++;
+        return false;
+      }
+    }
+
     return true;
   });
 
-  console.log(`   ${newRecords.length} new candidates to import`);
+  console.log(`   ${newRecords.length} new candidates to import, ${skippedDuplicates} skipped (already in Airtable)`);
 
   if (newRecords.length === 0) {
     console.log('\nNothing to import. Done.');
@@ -325,7 +396,7 @@ async function main() {
     }
   }
 
-  console.log(`\n=== Done! ${totalPushed}/${newRecords.length} candidates imported ===`);
+  console.log(`\nImport complete: ${totalPushed} new candidates imported, ${skippedDuplicates} skipped (already in Airtable)`);
 }
 
 main().catch((err) => {
