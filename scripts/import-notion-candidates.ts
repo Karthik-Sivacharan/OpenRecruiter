@@ -40,7 +40,7 @@ const AIRTABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE
 
 const CSV_PATH = resolve(
   process.env.HOME!,
-  'Downloads/Ninety-Head-of-Design-Candidates',
+  'Downloads/Ninety_Head_of_Design_v2',
   'Ninety - Head Of Design Candidates 352dd4da4635808eb9becbf7d9f47a19_all.csv',
 );
 
