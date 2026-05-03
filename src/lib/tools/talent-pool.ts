@@ -83,6 +83,15 @@ function extractLinkedInSlug(url: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// Email slug extraction (fallback when LinkedIn URL is missing)
+// ---------------------------------------------------------------------------
+
+function extractEmailSlug(email: string): string {
+  // Lowercase, replace @ and . with hyphens (e.g. "gmihci-gmail-com")
+  return email.toLowerCase().replace(/[@.]/g, '-');
+}
+
+// ---------------------------------------------------------------------------
 // Profile content builder
 // ---------------------------------------------------------------------------
 
@@ -218,29 +227,43 @@ export const syncToTalentPool = tool({
       return { synced: 0, skipped: 0, candidates: [], message: 'No candidates found for this role.' };
     }
 
-    // 2. Partition into syncable (has LinkedIn URL) vs skipped
+    // 2. Partition into syncable vs skipped
+    // customId fallback chain:
+    //   1. candidate-{linkedin-slug} (preferred - globally unique)
+    //   2. candidate-email-{email-slug} (fallback when no LinkedIn URL)
+    //   3. Skip with warning (neither LinkedIn nor email available)
     const toSync: Array<{ record: AirtableRecord; slug: string; customId: string }> = [];
     let skipped = 0;
 
     for (const record of records) {
       const linkedinUrl = record.fields['LinkedIn URL'];
-      if (!linkedinUrl || typeof linkedinUrl !== 'string' || !linkedinUrl.trim()) {
-        skipped++;
+      const email = record.fields['Email'];
+      const hasLinkedin = linkedinUrl && typeof linkedinUrl === 'string' && linkedinUrl.trim();
+      const hasEmail = email && typeof email === 'string' && email.trim();
+
+      if (hasLinkedin) {
+        const slug = extractLinkedInSlug(linkedinUrl);
+        if (slug) {
+          const customId = `candidate-${slug}`.slice(0, 100);
+          toSync.push({ record, slug, customId });
+          continue;
+        }
+      }
+
+      if (hasEmail) {
+        const emailSlug = extractEmailSlug(email);
+        const customId = `candidate-email-${emailSlug}`.slice(0, 100);
+        toSync.push({ record, slug: emailSlug, customId });
         continue;
       }
 
-      const slug = extractLinkedInSlug(linkedinUrl);
-      if (!slug) {
-        skipped++;
-        continue;
-      }
-
-      const customId = `candidate-${slug}`.slice(0, 100);
-      toSync.push({ record, slug, customId });
+      const name = record.fields['Name'] ?? 'Unknown';
+      console.warn(`Skipping candidate "${name}" (record ${record.id}) - no LinkedIn URL or Email`);
+      skipped++;
     }
 
     if (toSync.length === 0) {
-      return { synced: 0, skipped, candidates: [], message: 'No candidates with LinkedIn URLs to sync.' };
+      return { synced: 0, skipped, candidates: [], message: 'No candidates with LinkedIn URLs or emails to sync.' };
     }
 
     // 3. Sync to Supermemory in batches of 5
@@ -254,7 +277,9 @@ export const syncToTalentPool = tool({
       const results = await Promise.allSettled(
         batch.map(async ({ record, customId }) => {
           const profileText = buildProfileContent(record.fields);
-          const linkedinUrl = record.fields['LinkedIn URL'] as string;
+          const linkedinUrl = typeof record.fields['LinkedIn URL'] === 'string'
+            ? record.fields['LinkedIn URL']
+            : '';
           const metadata = buildMetadata(record.fields, linkedinUrl, record.id);
 
           await supermemoryClient.add({

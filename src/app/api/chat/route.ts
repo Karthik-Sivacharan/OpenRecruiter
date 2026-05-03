@@ -35,8 +35,12 @@ function buildSystemPrompt(useTalentPool: boolean): string {
   const talentPoolBlock = useTalentPool
     ? `
 ## Talent Pool Search (ENABLED)
-Before sourcing new candidates, search the talent pool using the searchTalentPool tool.
-After reading the JD and before asking follow-up questions, call searchTalentPool with a query derived from the key requirements (e.g. "senior backend engineer with Go and distributed systems experience in San Francisco").
+The talent pool (Supermemory) contains candidates from all previous roles. Use the searchTalentPool tool to search it - NOT Airtable.
+
+**Automatic search:** After reading a JD and before asking follow-up questions, call searchTalentPool with a query derived from the key requirements (e.g. "senior backend engineer with Go and distributed systems experience in San Francisco").
+
+**On-demand search:** If the recruiter asks to search the talent pool, find candidates, or look for past candidates - always use searchTalentPool. This searches across ALL past roles semantically, not just the current role. Airtable only has the current role's candidates.
+
 If matches are found, present them to the recruiter: "I found X candidates from previous roles that could be a fit" with a summary table (Name, Title, Company, Previous Role, Fit Score).
 The recruiter can choose to include these candidates in the current pipeline or skip them.
 At the end of the pipeline (after scoring or after outreach drafts are created), offer to sync new candidates to the talent pool using syncToTalentPool.
