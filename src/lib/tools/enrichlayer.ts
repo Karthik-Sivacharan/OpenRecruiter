@@ -162,6 +162,9 @@ async function fetchEnrichProfile(
 
   if (!response.ok) {
     const text = await response.text();
+    if (response.status === 403 && text.includes('credits')) {
+      return { error: 'NO_CREDITS', profile: null };
+    }
     return { error: `EnrichLayer profile error ${response.status}: ${text}`, profile: null };
   }
 
@@ -404,6 +407,21 @@ export const enrichAndSaveProfiles = tool({
       fields_set: string[];
       error?: string;
     }> = [];
+
+    // Check if EnrichLayer has no credits (first result will tell us)
+    const firstResult = enrichResults[0];
+    if (
+      firstResult?.status === 'fulfilled' &&
+      firstResult.value.error === 'NO_CREDITS'
+    ) {
+      return {
+        total: candidates.length,
+        enriched: 0,
+        failed: 0,
+        results: [],
+        message: 'EnrichLayer has no credits remaining. Skipping deep enrichment — pipeline continues with Apollo data.',
+      };
+    }
 
     for (let i = 0; i < enrichResults.length; i++) {
       const er = enrichResults[i];
