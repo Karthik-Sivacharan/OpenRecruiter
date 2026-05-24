@@ -283,10 +283,17 @@ export function ChatMessages({
 /** Internal tools that should not be shown in the chat UI */
 const HIDDEN_TOOLS = new Set(["setChatTitle"]);
 
+/** Custom display labels for tool cards */
+const TOOL_LABELS: Record<string, string> = {
+  fetchJobDescription: 'Parallel Extract',
+  searchAndSaveWebPresence: 'Parallel Search · Web Presence',
+};
+
 /** Convert camelCase tool names to human-readable labels */
 function formatToolName(name: string): string {
+  if (TOOL_LABELS[name]) return TOOL_LABELS[name];
   return name
-    .replace(/([A-Z])/g, " $1")
+    .replace(/([A-Z])/g, ' $1')
     .replace(/^./, (c) => c.toUpperCase())
     .trim();
 }
