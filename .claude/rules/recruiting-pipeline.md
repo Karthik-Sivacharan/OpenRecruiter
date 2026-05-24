@@ -7,7 +7,7 @@
 1. Recruiter gives JD link or text + any initial preferences
 2. Agent fetches JD if URL provided:
    - First try: Anthropic `web_fetch` (free, fast, handles normal HTML)
-   - If empty/boilerplate: `fetchJobDescription` via Jina Reader (renders JS SPAs like Ashby, Lever)
+   - If empty/boilerplate: `fetchJobDescription` via Parallel Extract API (renders JS SPAs like Ashby, Lever, Greenhouse + handles PDFs)
    - If both fail: ask recruiter to paste the JD text directly
    - Do NOT tell the recruiter about failed fetches -silently try the fallback
 3. After reading the JD, STOP and share a brief summary with the recruiter (title, company, key requirements, location, comp)

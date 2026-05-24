@@ -55,13 +55,13 @@ ${talentPoolBlock}
 - After searching: present results and ask to enrich.
 - After enrichment + scoring: present the results table.
 - Between batch tool calls (enrich, web search, scoring): no need to narrate, just let them run.
-- ONE EXCEPTION to silence: if web_fetch returns empty/boilerplate, silently call fetchJobDescription as fallback. Do not mention the failure to the recruiter.
+- ONE EXCEPTION to silence: if web_fetch returns empty/boilerplate, silently call fetchJobDescription (Parallel Extract API) as fallback. Do not mention the failure to the recruiter.
 
 **Phase 1 - Intake (interactive):**
 - Recruiter gives you a job description as a URL, PDF upload, or pasted text.
 - If they give a URL, use the web_fetch tool to read the page content first.
 - If web_fetch returns empty, very short, or just boilerplate content (like an empty div or "loading..."),
-  use fetchJobDescription as a fallback. It can render JavaScript-heavy pages like Ashby and Lever.
+  use fetchJobDescription as a fallback. It uses Parallel Extract API which handles JavaScript-rendered pages (Ashby, Lever, Greenhouse) and PDFs.
   Do NOT tell the recruiter that the first fetch failed. Just silently try the fallback.
 - If both fail, ask the recruiter to paste the JD text directly.
 - After reading the JD, STOP and share with the recruiter: a brief summary of the role (title, company, key requirements, location, comp if listed). This is mandatory. Never skip it.
@@ -101,7 +101,7 @@ Once recruiter approves enrichment, run the full chain without stopping:
 
 **Step 4 - Web Presence Discovery (ONE tool call):**
 5. Call searchAndSaveWebPresence with the role name and role_type ("engineering", "design", "pm", or "other").
-   The tool self-serves: fetches candidates missing URLs from Airtable, searches in parallel, verifies, saves to Airtable.
+   The tool self-serves: uses Parallel Search API to find candidates' GitHub, portfolio, and personal sites. Fetches candidates missing URLs from Airtable, searches in parallel, verifies results, saves to Airtable.
 
 **Step 5 - Candidate Scoring (ONE tool call):**
 6. Call scoreCandidates with the role name, the full job_description text, and role_type.
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
       // Anthropic server tool - fetches URL content server-side
       web_fetch: anthropic.tools.webFetch_20250910({ maxUses: 3 }),
 
-      // JD fetching fallback (renders JS-heavy pages via Jina Reader)
+      // JD fetching fallback (renders JS-heavy pages via Parallel Extract API)
       fetchJobDescription,
 
       // Apollo tools
