@@ -3,34 +3,17 @@ import { z } from 'zod';
 
 import { parallel } from '@/lib/clients/parallel';
 
-const JINA_API_KEY = () => process.env.JINA_API_KEY || '';
-
 // ---------------------------------------------------------------------------
-// Zod schema for Jina Reader API response
-// ---------------------------------------------------------------------------
-
-const JinaResponseSchema = z.object({
-  data: z.object({
-    title: z.string().nullable().optional(),
-    content: z.string(),
-    url: z.string().optional(),
-  }),
-});
-
-// ---------------------------------------------------------------------------
-// fetchJobDescription - render JS-heavy pages via Jina Reader
+// fetchJobDescription - extract JD content via Parallel Extract API
 // ---------------------------------------------------------------------------
 
 export const fetchJobDescription = tool({
   description:
-    'Fetch a URL and extract its content. Uses Parallel Extract API as primary (handles standard pages with focused extraction), with Jina Reader as fallback for JS-heavy SPA job boards (Ashby, Lever, Greenhouse). Returns the page as markdown.',
+    'Fetch a URL and extract its content via Parallel Extract API. Handles JavaScript-rendered pages (Ashby, Lever, Greenhouse) and PDFs. Uses objective-focused extraction to return clean job description markdown, stripping nav bars, footers, and irrelevant page chrome.',
   inputSchema: z.object({
     url: z.string().url().describe('The URL to fetch and render'),
   }),
   execute: async ({ url }): Promise<{ title: string | null; content: string; url: string } | { error: string }> => {
-    // -----------------------------------------------------------------------
-    // Primary: Parallel Extract API
-    // -----------------------------------------------------------------------
     try {
       const extract = await parallel.extract({
         urls: [url],
@@ -50,49 +33,49 @@ export const fetchJobDescription = tool({
           };
         }
       }
-      // If we get here, Extract returned empty/short — fall through to Jina
-    } catch (err) {
-      // Parallel Extract failed — fall through to Jina silently
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`Parallel Extract error (falling back to Jina): ${message}`);
-    }
 
-    // -----------------------------------------------------------------------
-    // Fallback: Jina Reader (handles JS-heavy SPA pages)
-    // -----------------------------------------------------------------------
-    try {
-      const response = await fetch(`https://r.jina.ai/${url}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${JINA_API_KEY()}`,
-          Accept: 'application/json',
-          'X-Return-Format': 'markdown',
-        },
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.error(`Jina Reader error ${response.status}: ${text}`);
-        return { error: `Jina Reader error ${response.status}: ${text}` };
-      }
-
-      const raw: unknown = await response.json();
-      const parsed = JinaResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        console.error(`Jina Reader parse error: ${parsed.error.message}`);
-        return { error: `Jina Reader response validation failed: ${parsed.error.message}` };
-      }
-
+      // Extract returned empty/short content
+      const errorDetail = extract.errors?.[0];
       return {
-        title: parsed.data.data.title ?? null,
-        content: parsed.data.data.content,
-        url: parsed.data.data.url ?? url,
+        error: errorDetail
+          ? `Parallel Extract error: ${errorDetail.error_type} (${errorDetail.http_status_code ?? 'unknown'})`
+          : 'Parallel Extract returned insufficient content',
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`Jina Reader fetch error: ${message}`);
-      return { error: `Jina Reader fetch error: ${message}` };
+      console.error(`Parallel Extract error: ${message}`);
+      return { error: `Parallel Extract error: ${message}` };
     }
   },
 });
+
+// ---------------------------------------------------------------------------
+// Old Jina Reader implementation (replaced by Parallel Extract API)
+// ---------------------------------------------------------------------------
+// const JINA_API_KEY = () => process.env.JINA_API_KEY || '';
+//
+// const JinaResponseSchema = z.object({
+//   data: z.object({
+//     title: z.string().nullable().optional(),
+//     content: z.string(),
+//     url: z.string().optional(),
+//   }),
+// });
+//
+// execute: async ({ url }) => {
+//   const response = await fetch(`https://r.jina.ai/${url}`, {
+//     method: 'GET',
+//     headers: {
+//       Authorization: `Bearer ${JINA_API_KEY()}`,
+//       Accept: 'application/json',
+//       'X-Return-Format': 'markdown',
+//     },
+//   });
+//   const raw = await response.json();
+//   const parsed = JinaResponseSchema.safeParse(raw);
+//   return {
+//     title: parsed.data.data.title ?? null,
+//     content: parsed.data.data.content,
+//     url: parsed.data.data.url ?? url,
+//   };
+// }
