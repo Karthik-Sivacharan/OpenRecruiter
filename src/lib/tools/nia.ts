@@ -1,6 +1,8 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 
+import { parallel } from '@/lib/clients/parallel';
+
 const NIA_API_KEY = () => process.env.NIA_API_KEY || '';
 const NIA_BASE = 'https://apigcp.trynia.ai/v2';
 const ORACLE_POLL_INTERVAL_MS = 10_000;
@@ -232,42 +234,68 @@ interface WebSearchResult {
 
 async function searchWeb(
   query: string,
-  category?: string,
+  _category?: string,
   numResults = 5,
 ): Promise<WebSearchResult[]> {
-  const body: Record<string, unknown> = {
-    mode: 'web',
-    query,
-    num_results: numResults,
-  };
-  if (category) body.category = category;
+  try {
+    const search = await parallel.search({
+      objective: `Find the online presence, GitHub profile, portfolio, or personal website for this person`,
+      search_queries: [query],
+      mode: 'basic',
+    });
 
-  const response = await fetch(`${NIA_BASE}/search`, {
-    method: 'POST',
-    headers: niaHeaders(),
-    body: JSON.stringify(body),
-  });
+    if (!search.results) return [];
 
-  if (!response.ok) {
+    return search.results.slice(0, numResults).map((r) => ({
+      url: r.url ?? null,
+      title: r.title ?? null,
+      snippet: r.excerpts?.[0] ?? null,
+    }));
+  } catch (err) {
+    console.error(`Parallel Search error: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
-
-  const raw: unknown = await response.json();
-  const parsed = WebSearchResponseSchema.safeParse(raw);
-  if (!parsed.success) return [];
-
-  const data = parsed.data;
-  return [
-    ...data.github_repos,
-    ...data.documentation,
-    ...data.other_content,
-    ...data.results,
-  ].map((r) => ({
-    url: r.url ?? r.link ?? null,
-    title: r.title ?? null,
-    snippet: r.summary ?? r.description ?? r.snippet ?? null,
-  }));
 }
+
+// --- Old Nia search implementation (replaced by Parallel Search API) ---
+// async function searchWeb(
+//   query: string,
+//   category?: string,
+//   numResults = 5,
+// ): Promise<WebSearchResult[]> {
+//   const body: Record<string, unknown> = {
+//     mode: 'web',
+//     query,
+//     num_results: numResults,
+//   };
+//   if (category) body.category = category;
+//
+//   const response = await fetch(`${NIA_BASE}/search`, {
+//     method: 'POST',
+//     headers: niaHeaders(),
+//     body: JSON.stringify(body),
+//   });
+//
+//   if (!response.ok) {
+//     return [];
+//   }
+//
+//   const raw: unknown = await response.json();
+//   const parsed = WebSearchResponseSchema.safeParse(raw);
+//   if (!parsed.success) return [];
+//
+//   const data = parsed.data;
+//   return [
+//     ...data.github_repos,
+//     ...data.documentation,
+//     ...data.other_content,
+//     ...data.results,
+//   ].map((r) => ({
+//     url: r.url ?? r.link ?? null,
+//     title: r.title ?? null,
+//     snippet: r.summary ?? r.description ?? r.snippet ?? null,
+//   }));
+// }
 
 // ---------------------------------------------------------------------------
 // Internal: verify a search result belongs to the candidate

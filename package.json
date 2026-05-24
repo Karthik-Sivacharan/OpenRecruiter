@@ -32,6 +32,7 @@
     "motion": "^12.38.0",
     "nanoid": "^5.1.9",
     "next": "16.2.4",
+    "parallel-web": "^0.5.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.5.0",
