@@ -29,3 +29,14 @@ archive/data/
 tsconfig.tsbuildinfo
 .vercel
 .env*.local
+
+# Landing page reference templates (kept locally for comparison, not committed)
+landing-pages/forma-video-landing/
+landing-pages/axis-quotient-h30/
+landing-pages/cobalt-repairworks-h78/
+
+# Unused template media + build docs in the live landing page
+landing-pages/openrecruiter/demo.mp4
+landing-pages/openrecruiter/poster.jpg
+landing-pages/openrecruiter/prompt.md
+landing-pages/openrecruiter/README.md
